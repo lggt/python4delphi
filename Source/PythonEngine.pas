@@ -95,7 +95,7 @@ uses
 {$IF not Defined(FPC) and (CompilerVersion >= 23)}
 const
   {$IF CompilerVersion >= 33}
-    pidSupportedPlatforms = pidWin32 or pidWin64 or pidOSX32 or pidOSX64 or pidLinux64;
+    pidSupportedPlatforms = pidAllPlatforms;
   {$ELSE}
     pidSupportedPlatforms = pidWin32 or pidWin64 or pidOSX32;
   {$IFEND}
@@ -154,6 +154,14 @@ const
     (DllName: 'libpython3.10.dylib'; RegVersion: '3.10'; APIVersion: 1013)
     );
 {$ENDIF}
+{$IFDEF ANDROID}
+  PYTHON_KNOWN_VERSIONS: array[6..8] of TPythonVersionProp =
+    (
+    (DllName: 'libpython3.8.so'; RegVersion: '3.8'; APIVersion: 1013),
+    (DllName: 'libpython3.9.so'; RegVersion: '3.9'; APIVersion: 1013),
+    (DllName: 'libpython3.10.so'; RegVersion: '3.10'; APIVersion: 1013)
+    );
+{$ENDIF}
 
   COMPILED_FOR_PYTHON_VERSION_INDEX = High(PYTHON_KNOWN_VERSIONS);
 
@@ -177,6 +185,13 @@ const
   Py_NE = 3;
   Py_GT = 4;
   Py_GE = 5;
+
+  {$IFDEF CPUARM}
+    DEFAULT_CALLBACK_TYPE: TCallType = TCallType.ctARMSTD;
+  {$ELSE}
+    DEFAULT_CALLBACK_TYPE: TCallType = TCallType.ctCDECL;
+  {$ENDIF CPUARM}
+
 type
   // Delphi equivalent used by TPyObject
   TRichComparisonOpcode = (pyLT, pyLE, pyEQ, pyNE, pyGT, pyGE);
@@ -203,6 +218,7 @@ type
   PPWCharT = PPWideChar;
   WCharTString = UnicodeString;
 {$ENDIF}
+
 
   const
 {
@@ -402,7 +418,7 @@ type
   newfunc           = function ( subtype: PPyTypeObject; args, kwds : PPyObject) : PPyObject; cdecl;
   allocfunc         = function ( self: PPyTypeObject; nitems : NativeInt) : PPyObject; cdecl;
 
-  PyNumberMethods = {$IFNDEF CPUX64}packed{$ENDIF} record
+  PyNumberMethods = {$IFDEF CPUX86}packed{$ENDIF} record
      nb_add           : binaryfunc;
      nb_subtract      : binaryfunc;
      nb_multiply      : binaryfunc;
@@ -442,7 +458,7 @@ type
   end;
   PPyNumberMethods = ^PyNumberMethods;
 
-  PySequenceMethods = {$IFNDEF CPUX64}packed{$ENDIF} record
+  PySequenceMethods = {$IFDEF CPUX86}packed{$ENDIF} record
      sq_length    : lenfunc;
      sq_concat    : binaryfunc;
      sq_repeat    : ssizeargfunc;
@@ -456,37 +472,37 @@ type
   end;
   PPySequenceMethods = ^PySequenceMethods;
 
-  PyMappingMethods = {$IFNDEF CPUX64}packed{$ENDIF} record
+  PyMappingMethods = {$IFDEF CPUX86}packed{$ENDIF} record
      mp_length	      : lenfunc;
      mp_subscript     : binaryfunc;
      mp_ass_subscript : objobjargproc;
   end;
   PPyMappingMethods = ^PyMappingMethods;
 
-  Py_complex =  {$IFNDEF CPUX64}packed{$ENDIF} record
+  Py_complex =  {$IFDEF CPUX86}packed{$ENDIF} record
      real : double;
      imag : double;
   end;
 
-  PyObject = {$IFNDEF CPUX64}packed{$ENDIF} record
+  PyObject = {$IFDEF CPUX86}packed{$ENDIF} record
     ob_refcnt: NativeInt;
     ob_type:   PPyTypeObject;
   end;
 
-  _frozen = {$IFNDEF CPUX64}packed{$ENDIF} record
+  _frozen = {$IFDEF CPUX86}packed{$ENDIF} record
      name	: PAnsiChar;
      code	: PByte;
      size	: Integer;
   end;
 
-  PySliceObject = {$IFNDEF CPUX64}packed{$ENDIF} record
+  PySliceObject = {$IFDEF CPUX86}packed{$ENDIF} record
     ob_refcnt:          NativeInt;
     ob_type:            PPyTypeObject;
     start, stop, step:  PPyObject;
   end;
 
   PPyMethodDef = ^PyMethodDef;
-  PyMethodDef  = {$IFNDEF CPUX64}packed{$ENDIF} record
+  PyMethodDef  = {$IFDEF CPUX86}packed{$ENDIF} record
      ml_name:  PAnsiChar;
      ml_meth:  PyCFunction;
      ml_flags: Integer;
@@ -495,11 +511,11 @@ type
 
   // structmember.h
   PPyMemberDef = ^PyMemberDef;
-  PyMemberDef = {$IFNDEF CPUX64}packed{$ENDIF} record
+  PyMemberDef = {$IFDEF CPUX86}packed{$ENDIF} record
     name : PAnsiChar;
     _type : integer;
     offset : NativeInt;
-    flags : integer;
+    flags : Integer;
     doc : PAnsiChar;
   end;
 
@@ -511,7 +527,7 @@ type
   setter = function ( obj, value : PPyObject; context : Pointer) : integer; cdecl;
 
   PPyGetSetDef = ^PyGetSetDef;
-  PyGetSetDef = {$IFNDEF CPUX64}packed{$ENDIF} record
+  PyGetSetDef = {$IFDEF CPUX86}packed{$ENDIF} record
     name : PAnsiChar;
     get : getter;
     _set : setter;
@@ -522,7 +538,7 @@ type
   wrapperfunc = function (self, args: PPyObject; wrapped : Pointer) : PPyObject; cdecl;
 
   pwrapperbase = ^wrapperbase;
-  wrapperbase = {$IFNDEF CPUX64}packed{$ENDIF} record
+  wrapperbase = {$IFDEF CPUX86}packed{$ENDIF} record
     name : PAnsiChar;
     wrapper : wrapperfunc;
     doc : PAnsiChar;
@@ -537,7 +553,7 @@ type
   }
 
   PPyDescrObject = ^PyDescrObject;
-  PyDescrObject = {$IFNDEF CPUX64}packed{$ENDIF} record
+  PyDescrObject = {$IFDEF CPUX86}packed{$ENDIF} record
     // Start of the Head of an object
     ob_refcnt  : NativeInt;
     ob_type    : PPyTypeObject;
@@ -547,7 +563,7 @@ type
   end;
 
   PPyMethodDescrObject = ^PyMethodDescrObject;
-  PyMethodDescrObject = {$IFNDEF CPUX64}packed{$ENDIF} record
+  PyMethodDescrObject = {$IFDEF CPUX86}packed{$ENDIF} record
     // Start of PyDescr_COMMON
     // Start of the Head of an object
     ob_refcnt  : NativeInt;
@@ -560,7 +576,7 @@ type
   end;
 
   PPyMemberDescrObject = ^PyMemberDescrObject;
-  PyMemberDescrObject = {$IFNDEF CPUX64}packed{$ENDIF} record
+  PyMemberDescrObject = {$IFDEF CPUX86}packed{$ENDIF} record
     // Start of PyDescr_COMMON
     // Start of the Head of an object
     ob_refcnt  : NativeInt;
@@ -573,7 +589,7 @@ type
   end;
 
   PPyGetSetDescrObject = ^PyGetSetDescrObject;
-  PyGetSetDescrObject = {$IFNDEF CPUX64}packed{$ENDIF} record
+  PyGetSetDescrObject = {$IFDEF CPUX86}packed{$ENDIF} record
     // Start of PyDescr_COMMON
     // Start of the Head of an object
     ob_refcnt  : NativeInt;
@@ -586,7 +602,7 @@ type
   end;
 
   PPyWrapperDescrObject = ^PyWrapperDescrObject;
-  PyWrapperDescrObject = {$IFNDEF CPUX64}packed{$ENDIF} record
+  PyWrapperDescrObject = {$IFDEF CPUX86}packed{$ENDIF} record
     // Start of PyDescr_COMMON
     // Start of the Head of an object
     ob_refcnt  : NativeInt;
@@ -600,7 +616,7 @@ type
   end;
 
   PPyModuleDef_Base = ^PyModuleDef_Base;
-  PyModuleDef_Base = {$IFNDEF CPUX64}packed{$ENDIF} record
+  PyModuleDef_Base = {$IFDEF CPUX86}packed{$ENDIF} record
     // Start of the Head of an object
     ob_refcnt  : NativeInt;
     ob_type    : PPyTypeObject;
@@ -611,7 +627,7 @@ type
   end;
 
   PPyModuleDef = ^PyModuleDef;
-  PyModuleDef = {$IFNDEF CPUX64}packed{$ENDIF} record
+  PyModuleDef = {$IFDEF CPUX86}packed{$ENDIF} record
     m_base : PyModuleDef_Base;
     m_name : PAnsiChar;
     m_doc : PAnsiChar;
@@ -625,7 +641,7 @@ type
 
 
   // object.h
-  PyTypeObject = {$IFNDEF CPUX64}packed{$ENDIF} record
+  PyTypeObject = {$IFDEF CPUX86}packed{$ENDIF} record
     ob_refcnt:      NativeInt;
     ob_type:        PPyTypeObject;
     ob_size:        NativeInt; // Number of items in variable part
@@ -724,7 +740,7 @@ type
   // Parse tree node interface
 
   PNode = ^node;
-  node = {$IFNDEF CPUX64}packed{$ENDIF} record
+  node = {$IFDEF CPUX86}packed{$ENDIF} record
     n_type      : smallint;
     n_str       : PAnsiChar;
     n_lineno    : integer;
@@ -734,7 +750,7 @@ type
   end;
 
   PPyCompilerFlags = ^PyCompilerFlags;
-  PyCompilerFlags = {$IFNDEF CPUX64}packed{$ENDIF} record
+  PyCompilerFlags = {$IFDEF CPUX86}packed{$ENDIF} record
     flags : integer;
     cf_feature_version : integer;  //added in Python 3.8
   end;
@@ -765,8 +781,9 @@ const
 
   { # of bytes for year, month, day, hour, minute, second, and usecond. }
   _PyDateTime_DATETIME_DATASIZE = 10;
+
 type
-  PyDateTime_Delta = {$IFNDEF CPUX64}packed{$ENDIF} record
+  PyDateTime_Delta = {$IFDEF CPUX86}packed{$ENDIF} record
     // Start of the Head of an object
     ob_refcnt  : NativeInt;
     ob_type    : PPyTypeObject;
@@ -778,7 +795,7 @@ type
   end;
   PPyDateTime_Delta = ^PyDateTime_Delta;
 
-  PyDateTime_TZInfo = {$IFNDEF CPUX64}packed{$ENDIF} record // a pure abstract base clase
+  PyDateTime_TZInfo = {$IFDEF CPUX86}packed{$ENDIF} record // a pure abstract base clase
     // Start of the Head of an object
     ob_refcnt  : NativeInt;
     ob_type    : PPyTypeObject;
@@ -800,7 +817,7 @@ type
  * convenient to cast to, when getting at the hastzinfo member of objects
  * starting with _PyTZINFO_HEAD.
  *}
-  _PyDateTime_BaseTZInfo = {$IFNDEF CPUX64}packed{$ENDIF} record
+  _PyDateTime_BaseTZInfo = {$IFDEF CPUX86}packed{$ENDIF} record
     // Start of _PyTZINFO_HEAD
     // Start of the Head of an object
     ob_refcnt  : NativeInt;
@@ -823,7 +840,7 @@ type
 	unsigned char data[_PyDateTime_TIME_DATASIZE];
 }
 
-  _PyDateTime_BaseTime = {$IFNDEF CPUX64}packed{$ENDIF} record // hastzinfo false
+  _PyDateTime_BaseTime = {$IFDEF CPUX86}packed{$ENDIF} record // hastzinfo false
     // Start of _PyDateTime_TIMEHEAD
       // Start of _PyTZINFO_HEAD
     // Start of the Head of an object
@@ -838,7 +855,7 @@ type
   end;
   _PPyDateTime_BaseTime = ^_PyDateTime_BaseTime;
 
-  PyDateTime_Time = {$IFNDEF CPUX64}packed{$ENDIF} record // hastzinfo true
+  PyDateTime_Time = {$IFDEF CPUX86}packed{$ENDIF} record // hastzinfo true
     // Start of _PyDateTime_TIMEHEAD
       // Start of _PyTZINFO_HEAD
     // Start of the Head of an object
@@ -861,7 +878,7 @@ type
  * the plain date type is a base class for datetime, so it must also have
  * a hastzinfo member (although it's unused there).
  *}
-  PyDateTime_Date = {$IFNDEF CPUX64}packed{$ENDIF} record
+  PyDateTime_Date = {$IFDEF CPUX86}packed{$ENDIF} record
     // Start of _PyTZINFO_HEAD
     // Start of the Head of an object
     ob_refcnt  : NativeInt;
@@ -880,7 +897,7 @@ type
 	unsigned char data[_PyDateTime_DATETIME_DATASIZE];
 }
 
-  _PyDateTime_BaseDateTime = {$IFNDEF CPUX64}packed{$ENDIF} record // hastzinfo false
+  _PyDateTime_BaseDateTime = {$IFDEF CPUX86}packed{$ENDIF} record // hastzinfo false
     // Start of _PyTZINFO_HEAD
     // Start of the Head of an object
     ob_refcnt  : NativeInt;
@@ -893,7 +910,7 @@ type
   end;
   _PPyDateTime_BaseDateTime = ^_PyDateTime_BaseDateTime;
 
-  PyDateTime_DateTime = {$IFNDEF CPUX64}packed{$ENDIF} record // hastzinfo true
+  PyDateTime_DateTime = {$IFDEF CPUX86}packed{$ENDIF} record // hastzinfo true
     // Start of _PyDateTime_DATETIMEHEAD
       // Start of _PyTZINFO_HEAD
         // Start of the Head of an object
@@ -914,7 +931,11 @@ type
 //##         GIL state                                 ##
 //##                                                   ##
 //#######################################################
-  PyGILState_STATE = (PyGILState_LOCKED, PyGILState_UNLOCKED);
+const
+  PyGILState_LOCKED = 0;
+  PyGILState_UNLOCKED = 1;
+type
+  PyGILState_STATE = type Integer; // (PyGILState_LOCKED, PyGILState_UNLOCKED);
 
 //#######################################################
 //##                                                   ##
@@ -1165,6 +1186,7 @@ type
     FOnBeforeLoad       : TNotifyEvent;
     FOnAfterLoad        : TNotifyEvent;
     FOnBeforeUnload     : TNotifyEvent;
+    FInExtensionModule   : Boolean;
 
     function  Import(const funcname: AnsiString; canFail : Boolean = True): Pointer;
     procedure Loaded; override;
@@ -1175,6 +1197,13 @@ type
     procedure DoOpenDll(const aDllName : string); virtual;
     function  GetDllPath : string;
 
+    procedure LoadPythonInfoFromModule;
+    function GetPythonModuleFromProcess(): NativeUInt;
+    function HasHostSymbols(): boolean;
+    procedure LoadFromHostSymbols();
+    //Loading strategies
+    function TryLoadFromHostSymbols(): boolean;
+    function TryLoadFromCurrentProcess(): boolean;
   public
     // Constructors & Destructors
     constructor Create(AOwner: TComponent); override;
@@ -1184,6 +1213,7 @@ type
     procedure OpenDll(const aDllName : string);
     function  IsHandleValid : Boolean;
     procedure LoadDll;
+    procedure LoadDllInExtensionModule;
     procedure UnloadDll;
     procedure Quit;
 
@@ -1583,12 +1613,13 @@ type
     PyEval_EvalCode                 : function ( co : PPyObject; globals, locals : PPyObject) : PPyObject; cdecl;
     Py_GetVersion                   : function : PAnsiChar; cdecl;
     Py_GetCopyright                 : function : PAnsiChar; cdecl;
-    Py_GetExecPrefix                : function : PAnsiChar; cdecl;
-    Py_GetPath                      : function : PAnsiChar; cdecl;
+    Py_GetExecPrefix                : function : PWCharT; cdecl;
+    Py_GetPath                      : function : PWCharT; cdecl;
+    Py_SetPath                      : procedure (path: PWCharT); cdecl;
     Py_SetPythonHome                : procedure (home : PWCharT); cdecl;
     Py_GetPythonHome                : function : PWCharT; cdecl;
-    Py_GetPrefix                    : function : PAnsiChar; cdecl;
-    Py_GetProgramName               : function : PAnsiChar; cdecl;
+    Py_GetPrefix                    : function : PWCharT; cdecl;
+    Py_GetProgramName               : function : PWCharT; cdecl;
 
     PyParser_SimpleParseStringFlags : function ( str : PAnsiChar; start, flags : Integer) : PNode; cdecl;
     PyNode_Free                     : procedure( n : PNode ); cdecl;
@@ -1756,6 +1787,8 @@ type
       property Limit : Integer read FLimit write FLimit;
   end;
 
+  TPythonType = class; //forward declaration
+
   {$IF not Defined(FPC) and (CompilerVersion >= 23)}
   [ComponentPlatformsAttribute(pidSupportedPlatforms)]
   {$IFEND}
@@ -1771,6 +1804,7 @@ type
     FAutoFinalize:               Boolean;
     FProgramName:                WCharTString;
     FPythonHome:                 WCharTString;
+    FPythonPath:                 WCharTString;
     FInitThreads:                Boolean;
     FOnPathInitialization:       TPathInitializationEvent;
     FOnSysPathInit:              TSysPathInitEvent;
@@ -1792,6 +1826,8 @@ type
     FPyDateTime_DateTimeTZType:  PPyObject;
     function  GetPythonHome: UnicodeString;
     function  GetProgramName: UnicodeString;
+    function GetPythonPath: UnicodeString;
+    procedure SetPythonPath(const Value: UnicodeString);
 
   protected
     procedure  Initialize;
@@ -1856,6 +1892,7 @@ type
     procedure  AddClient( client : TEngineClient );
     procedure  RemoveClient( client : TEngineClient );
     function   FindClient( const aName : string ) : TEngineClient;
+    function   FindPythonType( const TypeName : AnsiString ) : TPythonType;
     function   TypeByName( const aTypeName : AnsiString ) : PPyTypeObject;
     function   ModuleByName( const aModuleName : AnsiString ) : PPyObject;
     function   MethodsByName( const aMethodsContainer: string ) : PPyMethodDef;
@@ -1911,6 +1948,7 @@ type
     property IOPythonModule: TObject read FIOPythonModule; {TPythonModule}
     property PythonHome: UnicodeString read GetPythonHome write SetPythonHome;
     property ProgramName: UnicodeString read GetProgramName write SetProgramName;
+    property PythonPath: UnicodeString read GetPythonPath write SetPythonPath;
   published
     property AutoFinalize: Boolean read FAutoFinalize write FAutoFinalize default True;
     property VenvPythonExe: string read FVenvPythonExe write FVenvPythonExe;
@@ -2283,9 +2321,6 @@ type
 //--                                                   --
 //-------------------------------------------------------
 
-type
-  TPythonType = class; //forward declaration
-
 {
         A                    B                                                      C
         +-------------------++------------------------------------------------------+
@@ -2531,7 +2566,8 @@ type
       // methods
       ///////////////////////////////////////
       function  NewSubtypeInst( aType: PPyTypeObject; args, kwds : PPyObject) : PPyObject; cdecl;
-
+    public
+      const TYPE_COMP_NAME_SUFFIX = 'Type';
     public
       constructor Create( AOwner : TComponent ); override;
       destructor  Destroy; override;
@@ -2718,6 +2754,8 @@ procedure Register;
 function  PyType_HasFeature(AType : PPyTypeObject; AFlag : Integer) : Boolean;
 function  SysVersionFromDLLName(const DLLFileName : string): string;
 procedure PythonVersionFromDLLName(LibName: string; out MajorVersion, MinorVersion: integer);
+function PythonVersionFromRegVersion(const ARegVersion: string;
+  out AMajorVersion, AMinorVersion: integer): boolean;
 
 { Helper functions}
 (*
@@ -2750,6 +2788,7 @@ uses
 {$ENDIF}
 {$IFDEF MSWINDOWS}
   Registry,
+  PsAPI,
 {$ENDIF}
   Math;
 
@@ -2971,7 +3010,7 @@ var
 begin
   Result := DllPath;
 
-  if DLLPath = '' then begin
+  if (DLLPath = '') and not FInExtensionModule then begin
     {$IFDEF MSWINDOWS}
     IsPythonVersionRegistered(RegVersion, Result, AllUserInstall);
     {$ENDIF}
@@ -2984,6 +3023,123 @@ begin
   begin
     Result := IncludeTrailingPathDelimiter(Result);
   end;
+end;
+
+function TDynamicDll.GetPythonModuleFromProcess(): NativeUInt;
+
+{$IFNDEF FPC}
+
+function HasSymbols(const AModule: NativeUInt): boolean;
+  var
+    LPy_GetBuildInfo: function : PAnsiChar; cdecl;
+    LPy_IsInitialized: function: integer; cdecl;
+  begin
+    FDLLHandle := AModule;
+    try
+      LPy_GetBuildInfo := Import('Py_GetBuildInfo', false);
+      LPy_IsInitialized := Import('Py_IsInitialized', false);
+      Result := Assigned(LPy_GetBuildInfo) and Assigned(LPy_GetBuildInfo())
+        and Assigned(LPy_IsInitialized) and (LPy_IsInitialized() <> 0);
+    finally
+      FDLLHandle := 0;
+    end;
+  end;
+
+{$IFDEF LINUX}
+  function GetPythonModule: NativeUInt;
+  type
+    plink_map = ^link_map;
+    link_map = record
+      l_addr: Pointer;
+      l_name: PAnsiChar;
+      l_ld: Pointer;
+      l_next, l_prev: plink_map;
+    end;
+  var
+    LPseudoHandle: NativeUInt;
+    LPLinkMap: plink_map;
+    LModuleName: string;
+    LModuleHandle: NativeUInt;
+  begin
+    //In Linux pseudo handle is in fact a pointer to the the corresponding link_map structure
+    //The dlopen(nil, RTLD_NOW) result is the pseudo handle for the main executable (similar to GetModuleHandle(nil) in Windows).
+    LPseudoHandle := dlopen(nil, RTLD_NOW);
+    //Points to the first link_map
+    LPLinkMap := plink_map(LPseudoHandle).l_next.l_next;
+    while Assigned(LPLinkMap) do begin
+      LModuleName := String(LPLinkMap.l_name);
+      LModuleHandle := LoadLibrary(PChar(LModuleName));
+      if HasSymbols(LModuleHandle) then
+        Exit(LModuleHandle);
+      LPLinkMap := LPLinkMap.l_next;
+    end;
+    Result := 0;
+  end;
+{$ENDIF LINUX}
+
+{$IFDEF OSX}
+  function GetPythonModule: NativeUInt;
+  var
+    LIndex: integer;
+    LName: PAnsiChar;
+    LModuleName: string;
+    LModuleHandle: NativeUInt;
+  begin
+    LIndex := 0;
+    LName := _dyld_get_image_name(LIndex);
+    while (LName <> nil) do begin
+      LModuleName := String(LName);
+      LModuleHandle := LoadLibrary(PChar(LModuleName));
+      if HasSymbols(LModuleHandle) then
+        Exit(LModuleHandle);
+      Inc(LIndex);
+      LName := _dyld_get_image_name(LIndex);
+    end;
+    Result := 0;
+  end;
+{$ENDIF OSX}
+
+{$IFDEF MSWINDOWS}
+  function GetPythonModule: NativeUInt;
+  var
+    LHProcess: NativeUInt;
+    LHModules: array of NativeUInt;
+    LCbNeeded: Cardinal;
+    I: Integer;
+    LModName: array[0..1024] of char;
+  begin
+    SetLength(LHModules, 1024);
+    LHProcess := OpenProcess(PROCESS_QUERY_INFORMATION + PROCESS_VM_READ, false, GetCurrentProcessId());
+    if LHProcess > 0 then begin
+      try
+        if EnumProcessModules(LHProcess, @LHModules[0], 1024 * SizeOf(HMODULE), LCbNeeded) then begin
+          SetLength(LHModules, LCbNeeded div SizeOf(THandle));
+          for I := 0 to Length(LHModules) -1 do begin
+            GetModuleBaseName(LHProcess, LHModules[I], LModName, SizeOf(LModName));
+            if HasSymbols(LHModules[I]) then begin
+              Exit(LHModules[I]);
+            end;
+          end;
+        end;
+      finally
+        CloseHandle(LHProcess);
+      end;
+    end;
+    Result := 0;
+  end;
+{$ENDIF MSWINDOWS}
+{$ENDIF FPC}
+
+begin
+  {$IF DEFINED(LINUX) OR DEFINED(OSX) OR DEFINED(MSWINDOWS)}
+    {$IFNDEF FPC}
+    Result := GetPythonModule();
+    {$ELSE}
+    Result := 0;
+    {$ENDIF}
+  {$ELSE}
+  Result := 0;
+  {$IFEND}
 end;
 
 procedure  TDynamicDll.OpenDll(const aDllName : string);
@@ -3074,9 +3230,91 @@ begin
 {$ENDIF}
 end;
 
+function TDynamicDll.TryLoadFromCurrentProcess: boolean;
+begin
+  FDLLHandle := GetPythonModuleFromProcess();
+  if not IsHandleValid() then
+    Exit(false);
+
+  BeforeLoad();
+  LoadPythonInfoFromModule();
+  AfterLoad();
+  Result := true;
+end;
+
+function TDynamicDll.TryLoadFromHostSymbols: boolean;
+begin
+  //We want to look in for host symbols at first
+  FDLLHandle := 0;
+  Result := HasHostSymbols();
+  if Result then
+    LoadFromHostSymbols();
+end;
+
+procedure TDynamicDll.LoadFromHostSymbols;
+begin
+  BeforeLoad();
+  LoadPythonInfoFromModule();
+  AfterLoad();
+end;
+
+procedure TDynamicDll.LoadPythonInfoFromModule;
+var
+  LPy_GetVersion: function: PAnsiChar; cdecl;
+  LPy_GetProgramFullPath: function: PAnsiChar; cdecl;
+  LVersion: string;
+  LInfo: TPythonVersionProp;
+  LFound: boolean;
+begin
+  //According to the doc:
+  //Return the full program name of the Python executable.
+  //The value is available to Python code as sys.executable.
+  LPy_GetProgramFullPath := Import('Py_GetProgramFullPath');
+  DllName := ExtractFileName(String(LPy_GetProgramFullPath()));
+
+  //According to the doc:
+  //The first word (up to the first space character) is the current Python version
+  LPy_GetVersion := Import('Py_GetVersion');
+  LVersion := String(LPy_GetVersion());
+  LVersion := Copy(LVersion, 1, Pos(' ', LVersion));
+  //the first three characters are the major and minor version separated by a period.
+  if (Length(LVersion) > 3) and (LVersion[4] <> '.') then
+    LVersion := Copy(LVersion, 1, 4) //e.g. 3.10
+  else
+    LVersion := Copy(LVersion, 1, 3); //e.g. 3.9
+
+  LFound := false;
+  for LInfo in PYTHON_KNOWN_VERSIONS do
+    if (LInfo.RegVersion = LVersion) then begin
+      RegVersion := LInfo.RegVersion;
+      APIVersion := LInfo.APIVersion;
+      LFound := true;
+      Break;
+    end;
+
+  if not LFound then
+    raise EDLLLoadError.Create('Undetermined Python version from loaded module.');
+end;
+
 procedure TDynamicDll.LoadDll;
 begin
   OpenDll( DllName );
+end;
+
+procedure TDynamicDll.LoadDllInExtensionModule;
+begin
+  if not ModuleIsLib then
+    Exit;
+
+  FInExtensionModule := True;
+
+  if TryLoadFromHostSymbols() then
+    Exit;
+
+  if TryLoadFromCurrentProcess() then
+    Exit;
+
+  LoadDLL();
 end;
 
 procedure TDynamicDll.UnloadDll;
@@ -3109,6 +3347,14 @@ end;
 function  TDynamicDll.GetQuitMessage : string;
 begin
   Result := Format( 'Dll %s could not be loaded. We must quit.', [DllName]);
+end;
+
+function TDynamicDll.HasHostSymbols: boolean;
+var
+  LPy_IsInitialized: function: integer; cdecl;
+begin
+  LPy_IsInitialized := Import('Py_IsInitialized', false);
+  Result := Assigned(LPy_IsInitialized) and (LPy_IsInitialized() <> 0);
 end;
 
 procedure TDynamicDll.Quit;
@@ -3167,7 +3413,10 @@ end;
 procedure TPythonInterface.AfterLoad;
 begin
   inherited;
-  PythonVersionFromDLLName(DLLName, FMajorVersion, FMinorVersion);
+  if not FInExtensionModule then
+    PythonVersionFromDLLName(DLLName, FMajorVersion, FMinorVersion)
+  else if not PythonVersionFromRegVersion(RegVersion, FMajorVersion, FMinorVersion) then
+    raise EDLLLoadError.Create('Undetermined Python version.');
 
   FBuiltInModuleName := 'builtins';
 
@@ -3557,12 +3806,13 @@ begin
   Py_GetCopyright             := Import('Py_GetCopyright');
   Py_GetExecPrefix            := Import('Py_GetExecPrefix');
   Py_GetPath                  := Import('Py_GetPath');
+  Py_SetPath                  := Import('Py_SetPath');
   Py_SetPythonHome            := Import('Py_SetPythonHome');
   Py_GetPythonHome            := Import('Py_GetPythonHome');
   Py_GetPrefix                := Import('Py_GetPrefix');
   Py_GetProgramName           := Import('Py_GetProgramName');
 
-  if (FMajorVersion = 3) and (MinorVersion < 10) then
+  if (FMajorVersion = 3) and (FMinorVersion < 10) then
   begin
     PyParser_SimpleParseStringFlags := Import('PyParser_SimpleParseStringFlags');
     PyNode_Free                 := Import('PyNode_Free');
@@ -4215,26 +4465,34 @@ begin
     raise Exception.Create('There is already one instance of TPythonEngine running' );
 
   gPythonEngine := Self;
-  CheckRegistry;
-  if Assigned(Py_SetProgramName) and (Length(FProgramName) > 0) then
-    Py_SetProgramName(PWCharT(FProgramName));
-  AssignPyFlags;
-  if Length(FPythonHome) > 0 then
-    Py_SetPythonHome(PWCharT(FPythonHome));
-  Py_Initialize;
-  if Assigned(Py_IsInitialized) then
-    FInitialized := Py_IsInitialized() <> 0
-  else
-    FInitialized := True;
+
   FIORedirected := False;
-  InitSysPath;
-  SetProgramArgs;
+  if FInExtensionModule then
+    FInitialized := True
+  else
+  begin
+    CheckRegistry;
+    if Assigned(Py_SetProgramName) and (Length(FProgramName) > 0) then
+      Py_SetProgramName(PWCharT(FProgramName));
+    AssignPyFlags;
+    if Length(FPythonHome) > 0 then
+      Py_SetPythonHome(PWCharT(FPythonHome));
+    Py_Initialize;
+    if Assigned(Py_IsInitialized) then
+      FInitialized := Py_IsInitialized() <> 0
+    else
+      FInitialized := True;
+    InitSysPath;
+    SetProgramArgs;
+    if InitThreads and Assigned(PyEval_InitThreads) then
+      PyEval_InitThreads;
+    if RedirectIO and Assigned(FIO) then
+      DoRedirectIO;
+  end;
+
   GetTimeStructType;
   GetDateTimeTypes;
-  if InitThreads and Assigned(PyEval_InitThreads) then
-    PyEval_InitThreads;
-  if RedirectIO and Assigned(FIO) then
-    DoRedirectIO;
+
   for i := 0 to ClientCount - 1 do
     with Clients[i] do
       if not Initialized then
@@ -4319,8 +4577,8 @@ var
   Path : string;
   NewPath : string;
 {$IFDEF CPUX86}
-  MajorVersion : integer;
-  MinorVersion : integer;
+  LMajorVersion : integer;
+  LMinorVersion : integer;
 {$ENDIF}
   VersionSuffix: string;
 {$ENDIF}
@@ -4332,9 +4590,8 @@ begin
       try
         VersionSuffix := '';
 {$IFDEF CPUX86}
-        MajorVersion := StrToInt(RegVersion[1]);
-        MinorVersion := StrToInt(Copy(RegVersion, 3));
-        if (MajorVersion > 3) or ((MajorVersion = 3)  and (MinorVersion >= 5)) then
+        PythonVersionFromRegVersion(RegVersion, LMajorVersion, LMinorVersion);
+        if (LMajorVersion > 3) or ((LMajorVersion = 3)  and (LMinorVersion >= 5)) then
           VersionSuffix := '-32';
 {$ENDIF}
         key := Format('\Software\Python\PythonCore\%s%s\PythonPath', [RegVersion, VersionSuffix]);
@@ -4477,6 +4734,18 @@ begin
 {$ENDIF}
 end;
 
+function TPythonEngine.GetPythonPath: UnicodeString;
+begin
+{$IFDEF POSIX}
+  if (Length(FPythonPath) > 0) then
+    Result := UCS4StringToUnicodeString(FPythonPath)
+  else
+    Result := '';
+{$ELSE}
+  Result := FPythonPath;
+{$ENDIF}
+end;
+
 function  TPythonEngine.GetProgramName: UnicodeString;
 begin
 {$IFDEF POSIX}
@@ -4495,6 +4764,15 @@ begin
   FPythonHome :=  UnicodeStringToUCS4String(PythonHome);
 {$ELSE}
   FPythonHome :=  PythonHome;
+{$ENDIF}
+end;
+
+procedure TPythonEngine.SetPythonPath(const Value: UnicodeString);
+begin
+{$IFDEF POSIX}
+  FPythonPath :=  UnicodeStringToUCS4String(Value);
+{$ELSE}
+  FPythonPath :=  Value;
 {$ENDIF}
 end;
 
@@ -5040,7 +5318,7 @@ begin
     Result := AnsiString(str);
 end;
 
-function   TPythonEngine.TypeByName( const aTypeName : AnsiString ) : PPyTypeObject;
+function TPythonEngine.TypeByName( const aTypeName : AnsiString ) : PPyTypeObject;
 var
   i : Integer;
 begin
@@ -5177,7 +5455,12 @@ begin
     varShortInt,
     varWord,
     varLongWord,
-    varInteger:  Result := PyLong_FromLong( DeRefV );
+  {$IFDEF FPC}
+    // See https://github.com/pyscripter/python4delphi/issues/334
+    varInteger:  Result := PyLong_FromLong(Integer(DeRefV));
+  {$ELSE}
+    varInteger:  Result := PyLong_FromLong(DeRefV);
+  {$ENDIF}
     varInt64:    Result := PyLong_FromLongLong( DeRefV );
     varSingle,
     varDouble,
@@ -5765,6 +6048,19 @@ begin
     Result := nil;
 end;
 
+function TPythonEngine.FindPythonType(const TypeName: AnsiString): TPythonType;
+var
+  i : Integer;
+begin
+  Result := nil;
+  for i := 0 to ClientCount - 1 do
+    if (Clients[i] is TPythonType) and (TPythonType(Clients[i]).TypeName = TypeName) then
+    begin
+      Result := TPythonType(Clients[i]);
+      Break;
+    end;
+end;
+
 function TPythonEngine.FindFunction(const ModuleName,FuncName: AnsiString): PPyObject;
 var
   module,func: PPyObject;
@@ -6242,7 +6538,7 @@ function  TMethodsContainer.AddDelphiMethod( AMethodName  : PAnsiChar;
                                              ADocString : PAnsiChar ) : PPyMethodDef;
 begin
   Result := AddMethod( AMethodName,
-                       GetOfObjectCallBack( TCallBack(ADelphiMethod), 2, ctCDECL),
+                       GetOfObjectCallBack( TCallBack(ADelphiMethod), 2, DEFAULT_CALLBACK_TYPE),
                        ADocString );
 end;
 
@@ -6251,7 +6547,7 @@ function  TMethodsContainer.AddDelphiMethodWithKeywords(  AMethodName  : PAnsiCh
                                                           ADocString : PAnsiChar ) : PPyMethodDef;
 begin
   Result := AddMethod( AMethodName,
-                       GetOfObjectCallBack( TCallBack(ADelphiMethod), 3, ctCDECL),
+                       GetOfObjectCallBack( TCallBack(ADelphiMethod), 3, DEFAULT_CALLBACK_TYPE),
                        ADocString );
   Result^.ml_flags := Result^.ml_flags or METH_KEYWORDS;
 end;
@@ -8071,7 +8367,7 @@ begin
       begin
         tp_init             := TPythonType_InitSubtype;
         tp_alloc            := TPythonType_AllocSubtypeInst;
-        tp_new              := GetCallBack( Self, @TPythonType.NewSubtypeInst, 3, ctCDECL);
+        tp_new              := GetCallBack( Self, @TPythonType.NewSubtypeInst, 3, DEFAULT_CALLBACK_TYPE);
         tp_free             := FreeSubtypeInst;
         tp_methods          := MethodsData;
         tp_members          := MembersData;
@@ -8222,7 +8518,7 @@ end;
 
 procedure TPythonType.Finalize;
 begin
-  Engine.Py_XDECREF(FCreateFunc);
+  Engine.Py_CLEAR(FCreateFunc);
   FCreateFunc := nil;
   inherited;
 end;
@@ -8281,10 +8577,11 @@ begin
     begin
       meth := CreateMethod;
       FCreateFuncDef.ml_name  := PAnsiChar(FCreateFuncName);
-      FCreateFuncDef.ml_meth  := GetOfObjectCallBack( TCallBack(meth), 2, ctCDECL);
+      FCreateFuncDef.ml_meth  := GetOfObjectCallBack( TCallBack(meth), 2, DEFAULT_CALLBACK_TYPE);
       FCreateFuncDef.ml_flags := METH_VARARGS;
       FCreateFuncDef.ml_doc   := PAnsiChar(FCreateFuncDoc);
-      FCreateFunc := Engine.PyCFunction_NewEx(@FCreateFuncDef, nil, nil)
+      FCreateFunc := Engine.PyCFunction_NewEx(@FCreateFuncDef, nil, nil);
+      Engine.Py_INCREF(FCreateFunc);
     end;
     Assert(Assigned(FCreateFunc));
   end;
@@ -8882,22 +9179,6 @@ function pyio_GetTypesStats(self, args : PPyObject) : PPyObject;
       end;
   end;
 
-  function FindType( const TName : AnsiString ) : TPythonType;
-  var
-    i : Integer;
-  begin
-    Result := nil;
-    with GetPythonEngine do
-      for i := 0 to ClientCount - 1 do
-        if Clients[i] is TPythonType then
-          with TPythonType(Clients[i]) do
-            if TypeName = TName then
-              begin
-                Result := TPythonType(Clients[i]);
-                Break;
-              end;
-  end;
-
 var
   i : Integer;
   T : TPythonType;
@@ -8911,7 +9192,7 @@ begin
         for i := 0 to PyTuple_Size(args)-1 do
           begin
             str := AnsiString(PyObjectAsString( PyTuple_GetItem(args, i) ));
-            T := FindType( str );
+            T := FindPythonType( str );
             if Assigned(T) then
               begin
                 obj := HandleType( T );
@@ -9062,17 +9343,16 @@ function IsPythonVersionRegistered(PythonVersion : string;
 var
   key: string;
   VersionSuffix: string;
-  MajorVersion : integer;
-  MinorVersion : integer;
+  LMajorVersion : integer;
+  LMinorVersion : integer;
 begin
   Result := False;
   InstallPath := '';
   AllUserInstall := False;
-  MajorVersion := StrToInt(PythonVersion[1]);
-  MinorVersion := StrToInt(PythonVersion[3]);
   VersionSuffix := '';
+  PythonVersionFromRegVersion(PythonVersion, LMajorVersion, LMinorVersion);
 {$IFDEF CPUX86}
-  if (MajorVersion > 3) or ((MajorVersion = 3)  and (MinorVersion >= 5)) then
+  if (LMajorVersion > 3) or ((LMajorVersion = 3)  and (LMinorVersion >= 5)) then
     VersionSuffix := '-32';
 {$ENDIF}
   key := Format('\Software\Python\PythonCore\%s%s\InstallPath', [PythonVersion, VersionSuffix]);
@@ -9100,7 +9380,7 @@ begin
         RootKey := HKEY_LOCAL_MACHINE;
         if OpenKey(Key, False) then begin
           AllUserInstall := True;
-          if (MajorVersion > 3) or ((MajorVersion = 3)  and (MinorVersion >= 5)) then
+          if (LMajorVersion > 3) or ((LMajorVersion = 3)  and (LMinorVersion >= 5)) then
             InstallPath := ReadString('');
           Result := True;
         end;
@@ -9110,6 +9390,7 @@ begin
   except
   end;
 end;
+
 {$ENDIF}
 
 procedure PythonVersionFromDLLName(LibName: string; out MajorVersion, MinorVersion: integer);
@@ -9162,6 +9443,18 @@ begin
   MinorVersion:= StrToIntDef(LibName, DefaultMinor);
 end;
 
+function PythonVersionFromRegVersion(const ARegVersion: string;
+  out AMajorVersion, AMinorVersion: integer): boolean;
+var
+  LSepPos: integer;
+begin
+  //RegVersion supported format: [x.x or x.xx or x[..].x[..]]
+  LSepPos := Pos('.', ARegVersion);
+  AMajorVersion := StrToIntDef(Copy(ARegVersion, 1, LSepPos - 1), 0);
+  AMinorVersion := StrToIntDef(Copy(ARegVersion, LSepPos + 1, Length(ARegVersion) - LSepPos), 0);
+
+  Result := (AMajorVersion > 0) and (AMinorVersion > 0);
+end;
 
 end.
 

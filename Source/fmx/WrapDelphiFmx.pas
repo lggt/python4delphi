@@ -7,12 +7,15 @@ implementation
 uses
   WrapDelphiTypes,
   WrapDelphiClasses,
+  {$IFDEF Windows}
   WrapDelphiWindows,
-  WrapFireDac,
+  {$ENDIF Windows}
+  WrapDelphiDataBind,
   WrapFmxTypes,
   WrapFmxStdCtrls,
   WrapFmxEdit,
   WrapFmxListBox,
+  WrapFmxListView,
   WrapFmxActnList,
   WrapFmxComCtrls,
   WrapFmxDialogs,
@@ -20,6 +23,12 @@ uses
   WrapFmxShapes,
   WrapFmxLayouts,
   WrapFmxScrollBox,
-  WrapFmxGrids;
+  WrapFmxGrids,
+  WrapFmxMedia,
+  WrapFmxMenus,
+  WrapFmxStyles,
+  WrapFmxMemo,
+  WrapFmxColors,
+  WrapFmxDataBind;
 
 end.

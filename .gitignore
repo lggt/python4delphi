@@ -3,6 +3,7 @@
 *.dcu
 *.obj
 *.exe
+*.dll
 *.bpl
 *.bpi
 *.dcp
@@ -13,6 +14,8 @@
 *.ppu
 *.rsj
 *.compiled
+*.lib
+*.pyd
 
 # Generated source #
 ###################
@@ -46,3 +49,4 @@
 *.Patch
 *.#00
 *.pch
+/Tests/TestInsightSettings.ini

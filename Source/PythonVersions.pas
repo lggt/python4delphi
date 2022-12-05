@@ -104,13 +104,7 @@ end;
 function TPythonVersion.ExpectedArchitecture: string;
 begin
   Result := '';
-  {$IFDEF CPUX64}
-  Result := '64bit';
-  {$ENDIF}
-  {$IFDEF CPU64}
-  Result := '64bit';
-  {$ENDIF}
-  {$IFDEF CPU64bits}
+  {$IF Defined(CPUX64) or Defined(CPU64) or Defined(CPU64bits)}
   Result := '64bit';
   {$ENDIF}
   if Result = '' then
@@ -176,13 +170,13 @@ var
   SR: TSearchRec;
 begin
   Result := FHelpFile;
-  // for unregistered Python
-  if (Result = '') and (InstallPath <> '') then
+  // for unregistered Python or python 11
+  if ((Result = '') or (ExtractFileExt(Result) = '.html')) and (InstallPath <> '') then
   begin
-    PythonHelpFilePath := InstallPath + '\Doc\python*.chm';
+    PythonHelpFilePath := IncludeTrailingPathDelimiter(InstallPath) + 'Doc\python*.chm';
     Res := FindFirst(PythonHelpFilePath, faAnyFile, SR);
     if Res = 0 then
-      Result := InstallPath + '\Doc\' + SR.Name;
+      Result := IncludeTrailingPathDelimiter(InstallPath) + 'Doc\' + SR.Name;
     FindClose(SR);
   end;
 end;

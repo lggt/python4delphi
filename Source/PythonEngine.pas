@@ -62,8 +62,8 @@ unit PythonEngine;
 { TODO -oMMM : implement Attribute descriptor and subclassing stuff }
 
 {$IFNDEF FPC}
-  {$IFNDEF DELPHI2010_OR_HIGHER}
-      Error! Delphi 2010 or higher is required!
+  {$IFNDEF DELPHIXE2_OR_HIGHER}
+      Error! Delphi XE2 or higher is required!
   {$ENDIF}
 {$ENDIF}
 
@@ -116,7 +116,7 @@ type
   end;
 const
 {$IFDEF MSWINDOWS}
-  PYTHON_KNOWN_VERSIONS: array[1..8] of TPythonVersionProp =
+  PYTHON_KNOWN_VERSIONS: array[1..9] of TPythonVersionProp =
     (
     (DllName: 'python33.dll'; RegVersion: '3.3'; APIVersion: 1013),
     (DllName: 'python34.dll'; RegVersion: '3.4'; APIVersion: 1013),
@@ -125,11 +125,12 @@ const
     (DllName: 'python37.dll'; RegVersion: '3.7'; APIVersion: 1013),
     (DllName: 'python38.dll'; RegVersion: '3.8'; APIVersion: 1013),
     (DllName: 'python39.dll'; RegVersion: '3.9'; APIVersion: 1013),
-    (DllName: 'python310.dll'; RegVersion: '3.10'; APIVersion: 1013)
+    (DllName: 'python310.dll'; RegVersion: '3.10'; APIVersion: 1013),
+    (DllName: 'python311.dll'; RegVersion: '3.11'; APIVersion: 1013)
     );
 {$ENDIF}
 {$IFDEF _so_files}
-  PYTHON_KNOWN_VERSIONS: array[1..8] of TPythonVersionProp =
+  PYTHON_KNOWN_VERSIONS: array[1..9] of TPythonVersionProp =
     (
     (DllName: 'libpython3.3m.so'; RegVersion: '3.3'; APIVersion: 1013),
     (DllName: 'libpython3.4m.so'; RegVersion: '3.4'; APIVersion: 1013),
@@ -138,11 +139,12 @@ const
     (DllName: 'libpython3.7m.so'; RegVersion: '3.7'; APIVersion: 1013),
     (DllName: 'libpython3.8.so'; RegVersion: '3.8'; APIVersion: 1013),
     (DllName: 'libpython3.9.so'; RegVersion: '3.9'; APIVersion: 1013),
-    (DllName: 'libpython3.10.so'; RegVersion: '3.10'; APIVersion: 1013)
+    (DllName: 'libpython3.10.so'; RegVersion: '3.10'; APIVersion: 1013),
+    (DllName: 'libpython3.11.so'; RegVersion: '3.11'; APIVersion: 1013)
     );
 {$ENDIF}
 {$IFDEF DARWIN}
-  PYTHON_KNOWN_VERSIONS: array[1..8] of TPythonVersionProp =
+  PYTHON_KNOWN_VERSIONS: array[1..9] of TPythonVersionProp =
     (
     (DllName: 'libpython3.3.dylib'; RegVersion: '3.3'; APIVersion: 1013),
     (DllName: 'libpython3.4.dylib'; RegVersion: '3.4'; APIVersion: 1013),
@@ -151,15 +153,17 @@ const
     (DllName: 'libpython3.7.dylib'; RegVersion: '3.7'; APIVersion: 1013),
     (DllName: 'libpython3.8.dylib'; RegVersion: '3.8'; APIVersion: 1013),
     (DllName: 'libpython3.9.dylib'; RegVersion: '3.9'; APIVersion: 1013),
-    (DllName: 'libpython3.10.dylib'; RegVersion: '3.10'; APIVersion: 1013)
+    (DllName: 'libpython3.10.dylib'; RegVersion: '3.10'; APIVersion: 1013),
+    (DllName: 'libpython3.11.dylib'; RegVersion: '3.11'; APIVersion: 1013)
     );
 {$ENDIF}
 {$IFDEF ANDROID}
-  PYTHON_KNOWN_VERSIONS: array[6..8] of TPythonVersionProp =
+  PYTHON_KNOWN_VERSIONS: array[6..9] of TPythonVersionProp =
     (
     (DllName: 'libpython3.8.so'; RegVersion: '3.8'; APIVersion: 1013),
     (DllName: 'libpython3.9.so'; RegVersion: '3.9'; APIVersion: 1013),
-    (DllName: 'libpython3.10.so'; RegVersion: '3.10'; APIVersion: 1013)
+    (DllName: 'libpython3.10.so'; RegVersion: '3.10'; APIVersion: 1013),
+    (DllName: 'libpython3.11.so'; RegVersion: '3.11'; APIVersion: 1013)
     );
 {$ENDIF}
 
@@ -755,6 +759,9 @@ type
     cf_feature_version : integer;  //added in Python 3.8
   end;
 
+  const
+   PyCF_ONLY_AST = $0400;
+
   // from datetime.h
 
 
@@ -1056,6 +1063,8 @@ Exception\n\
       ELineStr: UnicodeString;
       ELineNumber: Integer;
       EOffset: Integer;
+      EEndLineNumber: Integer;
+      EEndOffset: Integer;
    end;
    EPyIndentationError = class (EPySyntaxError);
    EPyTabError = class (EPyIndentationError);
@@ -1517,6 +1526,7 @@ type
     PyObject_GetAttrString:function (ob:PPyObject;c:PAnsiChar):PPyObject; cdecl;
     PyObject_GetItem:function (ob,key:PPyObject):PPyObject; cdecl;
     PyObject_DelItem:function (ob,key:PPyObject):PPyObject; cdecl;
+    PyObject_HasAttr:function (ob, attr_name:PPyObject):integer; cdecl;
     PyObject_HasAttrString:function (ob:PPyObject;key:PAnsiChar):integer; cdecl;
     PyObject_Hash:function (ob:PPyObject):NativeInt; cdecl;
     PyObject_IsTrue:function (ob:PPyObject):integer; cdecl;
@@ -1537,7 +1547,7 @@ type
     PyObject_Call:function (ob, args, kw:PPyObject):PPyObject; cdecl;
     PyObject_GenericGetAttr:function (obj, name : PPyObject) : PPyObject; cdecl;
     PyObject_GenericSetAttr:function (obj, name, value : PPyObject) : Integer; cdecl;
-    PyObject_GC_Malloc:function (size:NativeUInt):PPyObject; cdecl;
+    PyObject_Malloc:function (size:NativeUInt):PPyObject; cdecl;
     PyObject_GC_New:function (t:PPyTypeObject):PPyObject; cdecl;
     PyObject_GC_NewVar:function (t:PPyTypeObject; size:NativeInt):PPyObject; cdecl;
     PyObject_GC_Resize:function (t:PPyObject; newsize:NativeInt):PPyObject; cdecl;
@@ -2278,7 +2288,6 @@ type
       procedure SetErrors( val : TErrors );
       procedure SetModuleName( const val : AnsiString );
       procedure SetDocString( value : TStringList );
-
     public
       // Constructors & destructors
       constructor Create( AOwner : TComponent ); override;
@@ -2306,7 +2315,6 @@ type
       property Module : PPyObject read FModule;
       property Clients[ idx : Integer ] : TEngineClient read GetClients;
       property ClientCount : Integer read GetClientCount;
-
     published
       property DocString : TStringList read FDocString write SetDocString;
       property ModuleName : AnsiString read FModuleName write SetModuleName;
@@ -2788,7 +2796,11 @@ uses
 {$ENDIF}
 {$IFDEF MSWINDOWS}
   Registry,
+{$IFDEF FPC}
+  JwaPsApi,
+{$ELSE}
   PsAPI,
+{$ENDIF}
 {$ENDIF}
   Math;
 
@@ -3705,6 +3717,7 @@ begin
   PyObject_GetAttrString    := Import('PyObject_GetAttrString');
   PyObject_GetItem          := Import('PyObject_GetItem');
   PyObject_DelItem          := Import('PyObject_DelItem');
+  PyObject_HasAttr          := Import('PyObject_HasAttr');
   PyObject_HasAttrString    := Import('PyObject_HasAttrString');
   PyObject_Hash             := Import('PyObject_Hash');
   PyObject_IsTrue           := Import('PyObject_IsTrue');
@@ -3725,7 +3738,7 @@ begin
   PyObject_Call             := Import('PyObject_Call');
   PyObject_GenericGetAttr   := Import('PyObject_GenericGetAttr');
   PyObject_GenericSetAttr   := Import('PyObject_GenericSetAttr');
-  PyObject_GC_Malloc        := Import('_PyObject_GC_Malloc');
+  PyObject_Malloc           := Import('PyObject_Malloc');
   PyObject_GC_New           := Import('_PyObject_GC_New');
   PyObject_GC_NewVar        := Import('_PyObject_GC_NewVar');
   PyObject_GC_Resize        := Import('_PyObject_GC_Resize');
@@ -4996,12 +5009,14 @@ procedure TPythonEngine.RaiseError;
 
   function DefineSyntaxError( E : EPySyntaxError; const sType, sValue : UnicodeString; err_type, err_value : PPyObject ) : EPySyntaxError;
   var
-    s_value       : UnicodeString;
-    s_line        : UnicodeString;
-    s_filename    : UnicodeString;
-    i_line_number : Integer;
-    i_offset      : Integer;
-    tmp           : PPyObject;
+    s_value           : UnicodeString;
+    s_line            : UnicodeString;
+    s_filename        : UnicodeString;
+    i_line_number     : Integer;
+    i_offset          : Integer;
+    i_end_line_number : Integer;
+    i_end_offset      : Integer;
+    tmp               : PPyObject;
   begin
     Result := E;
     Result.EName  := sType;
@@ -5011,8 +5026,10 @@ procedure TPythonEngine.RaiseError;
     s_filename    := '';
     i_line_number := 0;
     i_offset      := 0;
+    i_end_line_number := 0;
+    i_end_offset      := 0;
     // Sometimes there's a tuple instead of instance...
-    if PyTuple_Check( err_value )  and (PyTuple_Size( err_value) >= 2) then
+    if PyTuple_Check(err_value)  and (PyTuple_Size( err_value) >= 2) then
     begin
       s_value := PyObjectAsString(PyTuple_GetItem( err_value, 0));
       err_value := PyTuple_GetItem( err_value, 1);
@@ -5057,19 +5074,34 @@ procedure TPythonEngine.RaiseError;
       if Assigned(tmp) and PyUnicode_Check(tmp) then
         s_value := PyUnicodeAsString(tmp);
       Py_XDECREF(tmp);
+      if MajorVersion >= 10 then
+      begin
+      // Get the end offset of the error
+        tmp := PyObject_GetAttrString(err_value, 'end_offset' );
+        if Assigned(tmp) and PyLong_Check(tmp) then
+          i_end_offset := PyLong_AsLong(tmp);
+        Py_XDECREF(tmp);
+        // Get the end line number of the error
+        tmp := PyObject_GetAttrString(err_value, 'end_lineno' );
+        if Assigned(tmp) and PyLong_Check(tmp) then
+          i_end_line_number := PyLong_AsLong(tmp);
+        Py_XDECREF(tmp);
+      end;
     end;
     // If all is ok
     if s_value <> '' then
       begin
         with Result do
           begin
-            Message     := Format('%s: %s (line %d, offset %d): ''%s''', [sType,s_value,i_line_number, i_offset,s_line]);
-            EName       := sType;
-            EValue      := s_value;
-            EFileName   := s_filename;
-            ELineNumber := i_line_number;
-            EOffset     := i_offset;
-            ELineStr    := s_line;
+            Message        := Format('%s: %s (line %d, offset %d): ''%s''', [sType,s_value,i_line_number, i_offset,s_line]);
+            EName          := sType;
+            EValue         := s_value;
+            EFileName      := s_filename;
+            ELineNumber    := i_line_number;
+            EOffset        := i_offset;
+            EEndLineNumber := i_end_line_number;
+            EEndOffset     := i_end_offset;
+            ELineStr       := s_line;
           end;
       end
     else
@@ -6876,6 +6908,7 @@ begin
   begin
     Name := TError(Source).Name;
     Text := TError(Source).Text;
+    ErrorType := TError(Source).ErrorType;
     Exit;
   end;
   inherited Assign(Source);
@@ -7103,7 +7136,6 @@ begin
   inherited;
 end;
 
-
 procedure TPythonModule.SetDocString( value : TStringList );
 begin
   FDocString.Assign( value );
@@ -7305,11 +7337,12 @@ begin
   with Engine do
     begin
       obj := GetVar( varName );
-      try
-        Result := PyObjectAsVariant( obj );
-      finally
-        Py_XDecRef(obj);
-      end;
+      if Assigned(obj) then
+        try
+          Result := PyObjectAsVariant( obj );
+        finally
+          Py_XDecRef(obj);
+        end;
     end;
 end;
 

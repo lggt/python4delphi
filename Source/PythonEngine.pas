@@ -116,7 +116,7 @@ type
   end;
 const
 {$IFDEF MSWINDOWS}
-  PYTHON_KNOWN_VERSIONS: array[1..9] of TPythonVersionProp =
+  PYTHON_KNOWN_VERSIONS: array[1..10] of TPythonVersionProp =
     (
     (DllName: 'python33.dll'; RegVersion: '3.3'; APIVersion: 1013),
     (DllName: 'python34.dll'; RegVersion: '3.4'; APIVersion: 1013),
@@ -126,11 +126,12 @@ const
     (DllName: 'python38.dll'; RegVersion: '3.8'; APIVersion: 1013),
     (DllName: 'python39.dll'; RegVersion: '3.9'; APIVersion: 1013),
     (DllName: 'python310.dll'; RegVersion: '3.10'; APIVersion: 1013),
-    (DllName: 'python311.dll'; RegVersion: '3.11'; APIVersion: 1013)
+    (DllName: 'python311.dll'; RegVersion: '3.11'; APIVersion: 1013),
+    (DllName: 'python312.dll'; RegVersion: '3.12'; APIVersion: 1013)
     );
 {$ENDIF}
 {$IFDEF _so_files}
-  PYTHON_KNOWN_VERSIONS: array[1..9] of TPythonVersionProp =
+  PYTHON_KNOWN_VERSIONS: array[1..10] of TPythonVersionProp =
     (
     (DllName: 'libpython3.3m.so'; RegVersion: '3.3'; APIVersion: 1013),
     (DllName: 'libpython3.4m.so'; RegVersion: '3.4'; APIVersion: 1013),
@@ -140,11 +141,12 @@ const
     (DllName: 'libpython3.8.so'; RegVersion: '3.8'; APIVersion: 1013),
     (DllName: 'libpython3.9.so'; RegVersion: '3.9'; APIVersion: 1013),
     (DllName: 'libpython3.10.so'; RegVersion: '3.10'; APIVersion: 1013),
-    (DllName: 'libpython3.11.so'; RegVersion: '3.11'; APIVersion: 1013)
+    (DllName: 'libpython3.11.so'; RegVersion: '3.11'; APIVersion: 1013),
+    (DllName: 'libpython3.12.so'; RegVersion: '3.12'; APIVersion: 1013)
     );
 {$ENDIF}
 {$IFDEF DARWIN}
-  PYTHON_KNOWN_VERSIONS: array[1..9] of TPythonVersionProp =
+  PYTHON_KNOWN_VERSIONS: array[1..10] of TPythonVersionProp =
     (
     (DllName: 'libpython3.3.dylib'; RegVersion: '3.3'; APIVersion: 1013),
     (DllName: 'libpython3.4.dylib'; RegVersion: '3.4'; APIVersion: 1013),
@@ -154,16 +156,19 @@ const
     (DllName: 'libpython3.8.dylib'; RegVersion: '3.8'; APIVersion: 1013),
     (DllName: 'libpython3.9.dylib'; RegVersion: '3.9'; APIVersion: 1013),
     (DllName: 'libpython3.10.dylib'; RegVersion: '3.10'; APIVersion: 1013),
-    (DllName: 'libpython3.11.dylib'; RegVersion: '3.11'; APIVersion: 1013)
+    (DllName: 'libpython3.11.dylib'; RegVersion: '3.11'; APIVersion: 1013),
+    (DllName: 'libpython3.12.dylib'; RegVersion: '3.12'; APIVersion: 1013)
     );
 {$ENDIF}
 {$IFDEF ANDROID}
-  PYTHON_KNOWN_VERSIONS: array[6..9] of TPythonVersionProp =
+  PYTHON_KNOWN_VERSIONS: array[5..10] of TPythonVersionProp =
     (
+    (DllName: 'libpython3.7m.so'; RegVersion: '3.7'; APIVersion: 1013),
     (DllName: 'libpython3.8.so'; RegVersion: '3.8'; APIVersion: 1013),
     (DllName: 'libpython3.9.so'; RegVersion: '3.9'; APIVersion: 1013),
     (DllName: 'libpython3.10.so'; RegVersion: '3.10'; APIVersion: 1013),
-    (DllName: 'libpython3.11.so'; RegVersion: '3.11'; APIVersion: 1013)
+    (DllName: 'libpython3.11.so'; RegVersion: '3.11'; APIVersion: 1013),
+    (DllName: 'libpython3.12.so'; RegVersion: '3.12'; APIVersion: 1013)
     );
 {$ENDIF}
 
@@ -175,6 +180,8 @@ const
 
   METH_VARARGS  = $0001;
   METH_KEYWORDS = $0002;
+  METH_CLASS    = $0010;
+  METH_STATIC   = $0020;
 
   // Masks for the co_flags field of PyCodeObject
   CO_OPTIMIZED   = $0001;
@@ -223,6 +230,7 @@ type
   WCharTString = UnicodeString;
 {$ENDIF}
 
+  Py_ssize_t = NativeInt;
 
   const
 {
@@ -933,6 +941,27 @@ type
   end;
   PPyDateTime_DateTime = ^PyDateTime_DateTime;
 
+  //bytearrayobject.h
+
+  //typedef struct {
+  //  PyObject_VAR_HEAD
+  //  Py_ssize_t ob_alloc;   /* How many bytes allocated in ob_bytes */
+  //  char *ob_bytes;        /* Physical backing buffer */
+  //  char *ob_start;        /* Logical start inside ob_bytes */
+  //  Py_ssize_t ob_exports; /* How many buffer exports */
+  //} PyByteArrayObject;
+
+  PyByteArrayObject = {$IFDEF CPUX86}packed{$ENDIF} record
+    // Start of PyObject_VAR_HEAD
+    // Start of the Head of an object
+    ob_base: PyObject;
+    ob_size: Py_ssize_t;
+    // End of the Head of an object
+    ob_bytes: PAnsiChar;
+    ob_start: PAnsiChar;
+    ob_exports: Py_ssize_t;
+  end;
+
 //#######################################################
 //##                                                   ##
 //##         GIL state                                 ##
@@ -1274,7 +1303,6 @@ type
     procedure AfterLoad; override;
     function  GetQuitMessage : string; override;
     procedure CheckPython;
-    function  GetUnicodeTypeSuffix : string;
 
   public
     // define Python flags. See file pyDebug.h
@@ -1355,6 +1383,7 @@ type
     PyRange_Type: PPyTypeObject;
     PySlice_Type: PPyTypeObject;
     PyBytes_Type: PPyTypeObject;
+    PyByteArray_Type: PPyTypeObject;
     PyTuple_Type: PPyTypeObject;
     PyBaseObject_Type: PPyTypeObject;
     PyCallIter_Type: PPyTypeObject;
@@ -1434,6 +1463,7 @@ type
     PyRun_SimpleString:   function( str: PAnsiChar): Integer; cdecl;
     PyBytes_AsString:    function( ob: PPyObject): PAnsiChar; cdecl;
     PyBytes_AsStringAndSize: function( ob: PPyObject; var buffer: PAnsiChar; var size: NativeInt): integer; cdecl;
+    PyByteArray_AsString: function(ob: PPyObject): PAnsiChar; cdecl;
     PySys_SetArgv:        procedure( argc: Integer; argv: PPWCharT); cdecl;
 
     PyCFunction_NewEx: function(md:PPyMethodDef;self, ob:PPyObject):PPyObject; cdecl;
@@ -1492,6 +1522,8 @@ type
     PyMapping_HasKeyString:function (ob:PPyObject;key:PAnsiChar):integer; cdecl;
     PyMapping_Length:function (ob:PPyObject):NativeInt; cdecl;
     PyMapping_SetItemString:function (ob:PPyObject; key:PAnsiChar; value:PPyObject):integer; cdecl;
+    PyMapping_Keys:function(mp: PPyObject):PPyObject; cdecl;
+    PyMapping_Values:function(mp: PPyObject):PPyObject; cdecl;
     PyMethod_Function:function (ob:PPyObject):PPyObject; cdecl;
     PyMethod_New:function (ob1,ob2,ob3:PPyObject):PPyObject; cdecl;
     PyMethod_Self:function (ob:PPyObject):PPyObject; cdecl;
@@ -1580,6 +1612,11 @@ type
     PyBytes_Size:function (ob:PPyObject):NativeInt; cdecl;
     PyBytes_DecodeEscape:function(s:PAnsiChar; len:NativeInt; errors:PAnsiChar; unicode:NativeInt; recode_encoding:PAnsiChar):PPyObject; cdecl;
     PyBytes_Repr:function(ob:PPyObject; smartquotes:integer):PPyObject; cdecl;
+    PyByteArray_Concat: procedure(var ob1: PPyObject; ob2: PPyObject); cdecl;
+    PyByteArray_Resize: procedure(var ob1: PPyObject; len: Py_ssize_t); cdecl;
+    PyByteArray_FromObject: function(ob:PPyObject): PPyObject; cdecl;
+    PyByteArray_FromStringAndSize: function(s: PAnsiChar; i: Py_ssize_t): PPyObject; cdecl;
+    PyByteArray_Size: function(ob: PPyObject): Py_ssize_t; cdecl;
     PySys_GetObject:function (s:PAnsiChar):PPyObject; cdecl;
     PySys_SetObject:function (s:PAnsiChar;ob:PPyObject):integer; cdecl;
     PySys_SetPath:procedure(path:PAnsiChar); cdecl;
@@ -1605,7 +1642,7 @@ type
     PyUnicode_DecodeUTF16:function (const s:PAnsiChar; size: NativeInt; const errors: PAnsiChar; byteoder: PInteger):PPyObject; cdecl;
     PyUnicode_AsEncodedString:function (unicode:PPyObject; const encoding:PAnsiChar; const errors:PAnsiChar):PPyObject; cdecl;
     PyUnicode_FromOrdinal:function (ordinal:integer):PPyObject; cdecl;
-    PyUnicode_GetSize:function (unicode:PPyObject):NativeInt; cdecl;
+    PyUnicode_GetLength:function (unicode:PPyObject):NativeInt; cdecl;
     PyWeakref_GetObject: function ( ref : PPyObject) : PPyObject; cdecl;
     PyWeakref_NewProxy: function ( ob, callback : PPyObject) : PPyObject; cdecl;
     PyWeakref_NewRef: function ( ob, callback : PPyObject) : PPyObject; cdecl;
@@ -1707,6 +1744,8 @@ type
 
   function PyBytes_Check( obj : PPyObject ) : Boolean;
   function PyBytes_CheckExact( obj : PPyObject ) : Boolean;
+  function PyByteArray_Check(obj: PPyObject): Boolean;
+  function PyByteArray_CheckExact(obj: PPyObject): Boolean;
   function PyFloat_Check( obj : PPyObject ) : Boolean;
   function PyFloat_CheckExact( obj : PPyObject ) : Boolean;
   function PyLong_Check( obj : PPyObject ) : Boolean;
@@ -1871,25 +1910,26 @@ type
     procedure  SetPythonHome(const PythonHome: UnicodeString);
     procedure  SetProgramName(const ProgramName: UnicodeString);
     function   IsType(ob: PPyObject; obt: PPyTypeObject): Boolean;
-    function   Run_CommandAsString(const command : AnsiString; mode : Integer) : string;
-    function   Run_CommandAsObject(const command : AnsiString; mode : Integer) : PPyObject;
-    function   Run_CommandAsObjectWithDict(const command : AnsiString; mode : Integer; locals, globals : PPyObject) : PPyObject;
+    function   Run_CommandAsString(const command: AnsiString; mode: Integer; const FileName: string = '<string>'): string;
+    function   Run_CommandAsObject(const command: AnsiString; mode: Integer; const FileName: string = '<string>'): PPyObject;
+    function   Run_CommandAsObjectWithDict(const command: AnsiString; mode: Integer; locals, globals: PPyObject; const FileName: string = '<string>'): PPyObject;
     function   EncodeString (const str: UnicodeString): AnsiString; {$IFDEF FPC}overload;{$ENDIF}
     {$IFDEF FPC}
     overload;
     function   EncodeString (const str: AnsiString): AnsiString; overload;
     {$ENDIF}
-    function   EncodeWindowsFilePath (const str: string): AnsiString;
-    procedure  ExecString(const command : AnsiString); overload;
-    procedure  ExecStrings( strings : TStrings ); overload;
-    function   EvalString(const command : AnsiString) : PPyObject; overload;
-    function   EvalStringAsStr(const command : AnsiString) : string;
-    function   EvalStrings( strings : TStrings ) : PPyObject; overload;
-    procedure  ExecString(const command : AnsiString; locals, globals : PPyObject ); overload;
-    procedure  ExecStrings( strings : TStrings; locals, globals : PPyObject ); overload;
-    function   EvalString( const command : AnsiString; locals, globals : PPyObject ) : PPyObject; overload;
-    function   EvalStrings( strings : TStrings; locals, globals : PPyObject ) : PPyObject; overload;
-    function   EvalStringsAsStr( strings : TStrings ) : string;
+    function   EncodeWindowsFilePath(const str: string): AnsiString;
+    procedure  ExecString(const command: AnsiString; const FileName: string = '<string>'); overload;
+    procedure  ExecStrings(strings: TStrings; const FileName: string = '<string>'); overload;
+    procedure  ExecString(const command: AnsiString; locals, globals: PPyObject; const FileName: string = '<string>'); overload;
+    procedure  ExecFile(const FileName: string; locals: PPyObject = nil; globals: PPyObject = nil); overload;
+    procedure  ExecStrings(strings: TStrings; locals, globals: PPyObject; const FileName: string = '<string>'); overload;
+    function   EvalString(const command: AnsiString; const FileName: string = '<string>'): PPyObject; overload;
+    function   EvalStringAsStr(const command: AnsiString; const FileName: string = '<string>'): string;
+    function   EvalStrings(strings: TStrings; const FileName: string = '<string>'): PPyObject; overload;
+    function   EvalString(const command: AnsiString; locals, globals: PPyObject; const FileName: string = '<string>'): PPyObject; overload;
+    function   EvalStrings(strings: TStrings; locals, globals: PPyObject; const FileName: string = '<string>'): PPyObject; overload;
+    function   EvalStringsAsStr(strings: TStrings; const FileName: string = '<string>'): string;
     function   EvalPyFunction(pyfunc, pyargs:PPyObject): Variant;
     function   EvalFunction(pyfunc:PPyObject; const args: array of const): Variant;
     function   EvalFunctionNoArgs(pyfunc:PPyObject): Variant;
@@ -1916,7 +1956,7 @@ type
     function   ArrayToPyDict( const items : array of const) : PPyObject;
     function   StringsToPyList( strings : TStrings ) : PPyObject;
     function   StringsToPyTuple( strings : TStrings ) : PPyObject;
-    procedure  PyListToStrings( list : PPyObject; strings : TStrings );
+    procedure PyListToStrings(list: PPyObject; Strings: TStrings; ClearStrings: Boolean = True);
     procedure  PyTupleToStrings( tuple: PPyObject; strings : TStrings );
     function   ReturnNone : PPyObject;
     function   ReturnTrue : PPyObject;
@@ -1992,8 +2032,6 @@ type
 
       procedure SetEngine( val : TPythonEngine ); virtual;
       procedure Loaded; override;
-      procedure Notification( AComponent: TComponent;
-                              Operation: TOperation); override;
       procedure ModuleReady(Sender : TObject); virtual;
     public
       // Constructors & destructors
@@ -2102,6 +2140,12 @@ type
                            AMethod  : PyCFunction;
                            ADocString : PAnsiChar ) : PPyMethodDef;
       function  AddMethodWithKeywords( AMethodName  : PAnsiChar;
+                                       AMethod  : PyCFunctionWithKW;
+                                       ADocString : PAnsiChar ) : PPyMethodDef;
+      function  AddClassMethodWithKeywords( AMethodName  : PAnsiChar;
+                                       AMethod  : PyCFunctionWithKW;
+                                       ADocString : PAnsiChar ) : PPyMethodDef;
+      function  AddStaticMethodWithKeywords( AMethodName  : PAnsiChar;
                                        AMethod  : PyCFunctionWithKW;
                                        ADocString : PAnsiChar ) : PPyMethodDef;
       function  AddDelphiMethod( AMethodName  : PAnsiChar;
@@ -2298,7 +2342,8 @@ type
       procedure DefineDocString;
       procedure Initialize; override;
       procedure InitializeForNewInterpreter;
-      procedure AddClient( client : TEngineClient );
+      procedure AddClient(Client : TEngineClient);
+      procedure RemoveClient(Client : TEngineClient);
       function  ErrorByName( const AName : AnsiString ) : TError;
       procedure RaiseError( const error, msg : AnsiString );
       procedure RaiseErrorFmt( const error, format : AnsiString; const Args : array of const );
@@ -2369,8 +2414,9 @@ type
     PythonAlloc    : Boolean;
 
     // Constructors & Destructors
-    constructor Create( APythonType : TPythonType ); virtual;
-    constructor CreateWith( APythonType : TPythonType; args : PPyObject ); virtual;
+    constructor Create(APythonType: TPythonType); virtual;
+    constructor CreateWith(APythonType: TPythonType; args: PPyObject); overload; virtual;
+    constructor CreateWith(APythonType: TPythonType; args, kwds: PPyObject); overload; virtual;
     destructor  Destroy; override;
 
     class function NewInstance: TObject; override;
@@ -2558,7 +2604,8 @@ type
       procedure SetModule( val : TPythonModule );
       procedure SetServices( val : TTypeServices );
       procedure SetTypeName( const val : AnsiString );
-      function  CreateMethod( pSelf, args : PPyObject ) : PPyObject; cdecl;
+      procedure SetBaseType(AType: TPythonType);
+      function  CreateMethod(pSelf, args, kwds: PPyObject): PPyObject; cdecl;
       procedure InitServices;
       procedure SetDocString( value : TStringList );
       function  TypeFlagsAsInt : C_ULong;
@@ -2583,12 +2630,13 @@ type
       procedure Initialize; override;
       procedure Finalize; override;
       function  CreateInstance : PPyObject;
-      function  CreateInstanceWith( args : PPyObject ) : PPyObject;
+      function CreateInstanceWith(args, kwds: PPyObject): PPyObject;
       procedure AddTypeVar;
 
       property TheType : PyTypeObject read FType write FType;
       property TheTypePtr : PPyTypeObject read GetTypePtr;
       property PyObjectClass : TPyObjectClass read FPyObjectClass write SetPyObjectClass stored False;
+      property BaseType: TPythonType write SetBaseType;
       property InstanceCount : Integer read FInstanceCount;
       property CreateHits : Integer read FCreateHits;
       property DeleteHits : Integer read FDeleteHits;
@@ -2671,7 +2719,7 @@ type
 
     // Constructors & Destructors
     constructor Create( APythonType : TPythonType ); override;
-    constructor CreateWith( APythonType : TPythonType; args : PPyObject ); override;
+    constructor CreateWith(APythonType: TPythonType; args: PPyObject); override;
     destructor  Destroy; override;
 
     // Type services
@@ -3024,7 +3072,9 @@ begin
 
   if (DLLPath = '') and not FInExtensionModule then begin
     {$IFDEF MSWINDOWS}
-    IsPythonVersionRegistered(RegVersion, Result, AllUserInstall);
+    if IsPythonVersionRegistered(RegVersion, Result, AllUserInstall) and (Self is TPythonEngine) then
+      // https://github.com/python/cpython/issues/100171
+      TPythonEngine(Self).SetPythonHome(Result);
     {$ENDIF}
     {$IFDEF DARWIN}
     Result := '/Library/Frameworks/Python.framework/Versions/' + RegVersion + '/lib/';
@@ -3458,28 +3508,8 @@ begin
     raise Exception.Create('Python is not properly initialized' );
 end;
 
-function  TPythonInterface.GetUnicodeTypeSuffix : string;
-begin
-  if (fMajorVersion > 3) or ((fMajorVersion = 3) and (fMinorVersion >= 3)) then
-    Result := ''
-  else if APIVersion >= 1011 then
-    Result :=
-      {$IF DEFINED(MSWINDOWS) or DEFINED(DARWIN) or DEFINED(SOLARIS)}
-        'UCS2'
-      {$ELSE}
-        'UCS4'
-      {$IFEND}
-  else
-    Result := '';
-end;
-
 procedure TPythonInterface.MapDll;
-Var
-  UnicodeSuffix : string;
-
 begin
-  UnicodeSuffix := GetUnicodeTypeSuffix;
-
   Py_DebugFlag               := Import('Py_DebugFlag');
   Py_VerboseFlag             := Import('Py_VerboseFlag');
   Py_InteractiveFlag         := Import('Py_InteractiveFlag');
@@ -3557,6 +3587,7 @@ begin
   PyRange_Type               := Import('PyRange_Type');
   PySlice_Type               := Import('PySlice_Type');
   PyBytes_Type               := Import('PyBytes_Type');
+  PyByteArray_Type           := Import('PyByteArray_Type');
   PyTuple_Type               := Import('PyTuple_Type');
   PyUnicode_Type             := Import('PyUnicode_Type');
   PyBaseObject_Type          := Import('PyBaseObject_Type');
@@ -3683,6 +3714,8 @@ begin
   PyMapping_HasKeyString    := Import('PyMapping_HasKeyString');
   PyMapping_Length          := Import('PyMapping_Length');
   PyMapping_SetItemString   := Import('PyMapping_SetItemString');
+  PyMapping_Keys            := Import('PyMapping_Keys');
+  PyMapping_Values          := Import('PyMapping_Values');
   PyMethod_Function         := Import('PyMethod_Function');
   PyMethod_New              := Import('PyMethod_New');
   PyMethod_Self             := Import('PyMethod_Self');
@@ -3774,6 +3807,12 @@ begin
   PyBytes_DecodeEscape        := Import('PyBytes_DecodeEscape');
   PyBytes_Repr                := Import('PyBytes_Repr');
   _PyBytes_Resize             := Import('_PyBytes_Resize');
+  PyByteArray_AsString        := Import('PyByteArray_AsString');
+  PyByteArray_Concat          := Import('PyByteArray_Concat');
+  PyByteArray_Resize          := Import('PyByteArray_Resize');
+  PyByteArray_FromObject      := Import('PyByteArray_FromObject');
+  PyByteArray_FromStringAndSize := Import('PyByteArray_FromStringAndSize');
+  PyByteArray_Size            := Import('PyByteArray_Size');
   PySys_GetObject             := Import('PySys_GetObject');
   PySys_SetObject             := Import('PySys_SetObject');
   PySys_SetPath               := Import('PySys_SetPath');
@@ -3788,18 +3827,18 @@ begin
   PyType_GenericAlloc         := Import('PyType_GenericAlloc');
   PyType_GenericNew           := Import('PyType_GenericNew');
   PyType_Ready                := Import('PyType_Ready');
-  PyUnicode_FromWideChar      := Import(AnsiString(Format('PyUnicode%s_FromWideChar',[UnicodeSuffix])));
-  PyUnicode_FromString        := Import(AnsiString(Format('PyUnicode%s_FromString',[UnicodeSuffix])));
-  PyUnicode_FromStringAndSize := Import(AnsiString(Format('PyUnicode%s_FromStringAndSize',[UnicodeSuffix])));
-  PyUnicode_FromKindAndData   := Import(AnsiString(Format('PyUnicode%s_FromKindAndData',[UnicodeSuffix])));
-  PyUnicode_AsWideChar        := Import(AnsiString(Format('PyUnicode%s_AsWideChar',[UnicodeSuffix])));
-  PyUnicode_AsUTF8            := Import(AnsiString(Format('PyUnicode%s_AsUTF8',[UnicodeSuffix])));
-  PyUnicode_AsUTF8AndSize     := Import(AnsiString(Format('PyUnicode%s_AsUTF8AndSize',[UnicodeSuffix])));
-  PyUnicode_Decode            := Import(AnsiString(Format('PyUnicode%s_Decode',[UnicodeSuffix])));
-  PyUnicode_DecodeUTF16       := Import(AnsiString(Format('PyUnicode%s_DecodeUTF16',[UnicodeSuffix])));
-  PyUnicode_AsEncodedString   := Import(AnsiString(Format('PyUnicode%s_AsEncodedString',[UnicodeSuffix])));
-  PyUnicode_FromOrdinal       := Import(AnsiString(Format('PyUnicode%s_FromOrdinal',[UnicodeSuffix])));
-  PyUnicode_GetSize           := Import(AnsiString(Format('PyUnicode%s_GetSize',[UnicodeSuffix])));
+  PyUnicode_FromWideChar      := Import('PyUnicode_FromWideChar');
+  PyUnicode_FromString        := Import('PyUnicode_FromString');
+  PyUnicode_FromStringAndSize := Import('PyUnicode_FromStringAndSize');
+  PyUnicode_FromKindAndData   := Import('PyUnicode_FromKindAndData');
+  PyUnicode_AsWideChar        := Import('PyUnicode_AsWideChar');
+  PyUnicode_AsUTF8            := Import('PyUnicode_AsUTF8');
+  PyUnicode_AsUTF8AndSize     := Import('PyUnicode_AsUTF8AndSize');
+  PyUnicode_Decode            := Import('PyUnicode_Decode');
+  PyUnicode_DecodeUTF16       := Import('PyUnicode_DecodeUTF16');
+  PyUnicode_AsEncodedString   := Import('PyUnicode_AsEncodedString');
+  PyUnicode_FromOrdinal       := Import('PyUnicode_FromOrdinal');
+  PyUnicode_GetLength         := Import('PyUnicode_GetLength');
   PyWeakref_GetObject         := Import('PyWeakref_GetObject');
   PyWeakref_NewProxy          := Import('PyWeakref_NewProxy');
   PyWeakref_NewRef            := Import('PyWeakref_NewRef');
@@ -3905,6 +3944,16 @@ begin
     op := nil;
     Py_DECREF(_py_tmp);
   end;
+end;
+
+function TPythonInterface.PyByteArray_Check(obj: PPyObject): Boolean;
+begin
+  Result := PyObject_TypeCheck(obj, PyByteArray_Type);
+end;
+
+function TPythonInterface.PyByteArray_CheckExact(obj: PPyObject): Boolean;
+begin
+  Result := Assigned( obj ) and (obj^.ob_type = PPyTypeObject(PyByteArray_Type));
 end;
 
 function TPythonInterface.PyBytes_Check( obj : PPyObject ) : Boolean;
@@ -4270,11 +4319,15 @@ begin
 end;
 
 destructor TPythonEngine.Destroy;
+var
+  I: Integer;
 begin
   LocalVars := nil;
   GlobalVars := nil;
   Destroying;
   Finalize;
+  for I := 0 to ClientCount - 1 do
+    Clients[I].ClearEngine;
   FClients.Free;
   FInitScript.Free;
   FTraceback.Free;
@@ -4284,7 +4337,6 @@ end;
 procedure TPythonEngine.Finalize;
 var
   i: integer;
-  canDetachClients : Boolean;
 begin
   // switch off redirection when the component is destroying,
   // because the form or datamodule is beeing closed, and
@@ -4318,21 +4370,6 @@ begin
       end;
     except
     end;
-  end;
-  // Detach our clients, when engine is being destroyed or one of its clients.
-  canDetachClients := csDestroying in ComponentState;
-  if not canDetachClients then
-    for i := 0 to ClientCount - 1 do
-      if csDestroying in Clients[i].ComponentState then
-      begin
-        canDetachClients := True;
-        Break;
-      end;
-  if canDetachClients then
-  begin
-    for i := 0 to ClientCount - 1 do
-      Clients[i].ClearEngine;
-    FClients.Clear;
   end;
   // Free our reference
   gPythonEngine               := nil;
@@ -4376,8 +4413,10 @@ begin
       end;
     end
   else
+  begin
     RegVersion := SysVersionFromDLLName(aDllName);
-  inherited;
+    inherited;
+  end;
 end;
 
 procedure TPythonEngine.AssignPyFlags;
@@ -4510,8 +4549,9 @@ begin
     with Clients[i] do
       if not Initialized then
         Initialize;
+
   if InitScript.Count > 0 then
-    ExecStrings( InitScript );
+    ExecStrings(InitScript);
   if Assigned(FOnAfterInit) then
     FOnAfterInit(Self);
 end;
@@ -4563,24 +4603,10 @@ end;
 
 procedure TPythonEngine.Notification( AComponent: TComponent;
                                       Operation: TOperation);
-var
-  i : Integer;
 begin
   inherited;
-  if Operation = opRemove then
-    begin
-      if AComponent = IO then
-        IO := nil
-      else
-        begin
-          for i := 0 to ClientCount - 1 do
-            if Clients[i] = AComponent then
-              begin
-                RemoveClient( Clients[i] );
-                Break;
-              end;
-        end;
-    end;
+  if (Operation = opRemove) and (AComponent = IO) then
+    IO := nil
 end;
 
 procedure TPythonEngine.CheckRegistry;
@@ -4859,40 +4885,55 @@ begin
   end;
 end;
 
-function TPythonEngine.EvalStringAsStr(const command : AnsiString) : string;
+function TPythonEngine.EvalStringAsStr(const command: AnsiString; const
+    FileName: string = '<string>'): string;
 begin
-  Result := Run_CommandAsString( command, eval_input );
+  Result := Run_CommandAsString(command, eval_input, FileName);
 end;
 
-function TPythonEngine.EvalString(const command : AnsiString) : PPyObject;
+function TPythonEngine.EvalString(const command: AnsiString; const FileName:
+    string = '<string>'): PPyObject;
 begin
-  Result := Run_CommandAsObject( command, eval_input );
+  Result := Run_CommandAsObject(command, eval_input, FileName);
 end;
 
-procedure TPythonEngine.ExecString(const command : AnsiString);
+procedure TPythonEngine.ExecString(const command: AnsiString; const FileName:
+    string = '<string>');
 begin
-  Py_XDecRef( Run_CommandAsObject( command, file_input ) );
+  Py_XDecRef(Run_CommandAsObject(command, file_input, FileName));
 end;
 
-function TPythonEngine.Run_CommandAsString(const command : AnsiString; mode : Integer) : string;
+function TPythonEngine.Run_CommandAsString(const command: AnsiString; mode:
+    Integer; const FileName: string = '<string>'): string;
 var
-  v : PPyObject;
+  PRes : PPyObject;
 begin
   Result := '';
-  v := Run_CommandAsObject( command, mode );
-  Result := PyObjectAsString( v );
-  Py_XDECREF(v);
+  PRes := Run_CommandAsObject(command, mode, FileName);
+  Result := PyObjectAsString(PRes);
+  Py_XDECREF(PRes);
 end;
 
-function TPythonEngine.Run_CommandAsObject(const command : AnsiString; mode : Integer) : PPyObject;
+function TPythonEngine.Run_CommandAsObject(const command: AnsiString; mode:
+    Integer; const FileName: string = '<string>'): PPyObject;
 begin
-  Result := Run_CommandAsObjectWithDict(command, mode, nil, nil);
+  Result := Run_CommandAsObjectWithDict(command, mode, nil, nil, FileName);
 end;
 
-function TPythonEngine.Run_CommandAsObjectWithDict(const command : AnsiString; mode : Integer; locals, globals : PPyObject) : PPyObject;
+function TPythonEngine.Run_CommandAsObjectWithDict(const command: AnsiString;
+    mode: Integer; locals, globals: PPyObject; const FileName: string =
+    '<string>'): PPyObject;
+{
+  This is the core function for executing/evaluating python code
+  Parameters:
+  - command: utf-8 encoded AnsiString with the code that will be executed or evaluated
+  - mode: one of the constants file_input, single_input, eval_input
+  - locals, globals: python dictionaries with local/global namespaces. Can be nil.
+  - FileName; optional string used when debugging code with external debuggers
+}
 var
   m : PPyObject;
-  _locals, _globals : PPyObject;
+  _locals, _globals, Code : PPyObject;
 begin
   CheckPython;
   Result := nil;
@@ -4918,7 +4959,11 @@ begin
     _globals := _locals;
 
   try
-    Result := PyRun_String(PAnsiChar(CleanString(command)), mode, _globals, _locals);
+    Code := Py_CompileString(PAnsiChar(CleanString(command)),
+      PAnsiChar(EncodeString(FileName)), mode);
+    if Code = nil then
+      CheckError(False);
+    Result := PyEval_EvalCode(Code, _globals, _locals );
     if Result = nil then
       CheckError(False);
   except
@@ -4929,39 +4974,62 @@ begin
   end;
 end;
 
-procedure TPythonEngine.ExecStrings( strings : TStrings );
+procedure TPythonEngine.ExecStrings(strings: TStrings; const FileName: string =
+    '<string>');
 begin
-  Py_XDecRef( Run_CommandAsObject( EncodeString(strings.Text) , file_input ) );
+  Py_XDecRef(Run_CommandAsObject(EncodeString(strings.Text), file_input, FileName));
 end;
 
-function TPythonEngine.EvalStrings( strings : TStrings ) : PPyObject;
+function TPythonEngine.EvalStrings(strings: TStrings; const FileName: string =
+    '<string>'): PPyObject;
 begin
-  Result := Run_CommandAsObject( EncodeString(strings.Text) , eval_input );
+  Result := Run_CommandAsObject(EncodeString(strings.Text) , eval_input, FileName);
 end;
 
-procedure TPythonEngine.ExecString(const command : AnsiString; locals, globals : PPyObject );
+procedure TPythonEngine.ExecFile(const FileName: string; locals,
+  globals: PPyObject);
+var
+  SL: TStringList;
 begin
-  Py_XDecRef( Run_CommandAsObjectWithDict( command, file_input, locals, globals ) );
+  SL := TStringList.Create;
+  try
+    SL.LoadFromFile(FileName);
+    ExecStrings(SL, locals, globals, FileName);
+  finally
+    SL.Free;
+  end;
 end;
 
-procedure TPythonEngine.ExecStrings( strings : TStrings; locals, globals : PPyObject );
+procedure TPythonEngine.ExecString(const command: AnsiString; locals, globals:
+    PPyObject; const FileName: string = '<string>');
 begin
-  Py_XDecRef( Run_CommandAsObjectWithDict( EncodeString(strings.Text), file_input, locals, globals ) );
+  Py_XDecRef(Run_CommandAsObjectWithDict(command, file_input, locals, globals, FileName));
 end;
 
-function TPythonEngine.EvalString( const command : AnsiString; locals, globals : PPyObject ) : PPyObject;
+procedure TPythonEngine.ExecStrings(strings: TStrings; locals, globals:
+    PPyObject; const FileName: string = '<string>');
 begin
-  Result := Run_CommandAsObjectWithDict( command, eval_input, locals, globals );
+  Py_XDecRef( Run_CommandAsObjectWithDict(EncodeString(strings.Text),
+    file_input, locals, globals, FileName));
 end;
 
-function TPythonEngine.EvalStrings( strings : TStrings; locals, globals : PPyObject ) : PPyObject;
+function TPythonEngine.EvalString(const command: AnsiString; locals, globals:
+    PPyObject; const FileName: string = '<string>'): PPyObject;
 begin
-  Result := Run_CommandAsObjectWithDict( EncodeString(strings.Text), eval_input, locals, globals );
+  Result := Run_CommandAsObjectWithDict(command, eval_input, locals, globals, FileName);
 end;
 
-function TPythonEngine.EvalStringsAsStr( strings : TStrings ) : string;
+function TPythonEngine.EvalStrings(strings: TStrings; locals, globals:
+    PPyObject; const FileName: string = '<string>'): PPyObject;
 begin
-  Result := Run_CommandAsString( EncodeString(strings.Text), eval_input );
+  Result := Run_CommandAsObjectWithDict(EncodeString(strings.Text),
+    eval_input, locals, globals, FileName);
+end;
+
+function TPythonEngine.EvalStringsAsStr(strings: TStrings; const FileName:
+    string = '<string>'): string;
+begin
+  Result := Run_CommandAsString(EncodeString(strings.Text), eval_input, FileName);
 end;
 
 function TPythonEngine.CheckEvalSyntax( const str : AnsiString ) : Boolean;
@@ -5074,7 +5142,7 @@ procedure TPythonEngine.RaiseError;
       if Assigned(tmp) and PyUnicode_Check(tmp) then
         s_value := PyUnicodeAsString(tmp);
       Py_XDECREF(tmp);
-      if MajorVersion >= 10 then
+      if (MajorVersion > 3) or (MinorVersion >= 10) then
       begin
       // Get the end offset of the error
         tmp := PyObject_GetAttrString(err_value, 'end_offset' );
@@ -5264,7 +5332,7 @@ const
          '  def flush(self):' + LF +
          '     pass' + LF +
          '  def isatty(self):' + LF +
-         '     return True' + LF +
+         '     return False' + LF +
          'sys.old_stdin=sys.stdin'+LF+
          'sys.old_stdout=sys.stdout'+LF+
          'sys.old_stderr=sys.stderr'+LF+
@@ -5308,7 +5376,7 @@ begin
   // is not predictable and may cause some memory crashes !
   if (csDesigning in ComponentState) then
     FClients.Remove( client )
-  else if (Initialized) then begin
+  else if Initialized then begin
     FClients.Remove( client );
     if (ClientCount = 0) then
       Finalize;
@@ -5945,15 +6013,17 @@ begin
       PyUnicodeFromString(strings.Strings[i]));
 end;
 
-procedure TPythonEngine.PyListToStrings( list : PPyObject; strings : TStrings );
+procedure TPythonEngine.PyListToStrings(list: PPyObject; Strings: TStrings;
+    ClearStrings: Boolean = True);
 var
   i : Integer;
 begin
   if not PyList_Check(list) then
     raise EPythonError.Create('the python object is not a list');
-  strings.Clear;
+  if ClearStrings then
+    Strings.Clear;
   for i := 0 to PyList_Size( list ) - 1 do
-    strings.Add( PyObjectAsString( PyList_GetItem( list, i ) ) );
+    Strings.Add( PyObjectAsString( PyList_GetItem( list, i ) ) );
 end;
 
 procedure TPythonEngine.PyTupleToStrings( tuple: PPyObject; strings : TStrings );
@@ -5981,35 +6051,24 @@ begin
     raise EPythonError.CreateFmt(SPyConvertionError, ['PyBytesAsAnsiString', 'Bytes']);
 end;
 
-function TPythonEngine.PyUnicodeAsString( obj : PPyObject ) : UnicodeString;
+function TPythonEngine.PyUnicodeAsString(obj : PPyObject): UnicodeString;
 var
-  _size : Integer;
-{$IFDEF POSIX}
-  _ucs4Str : UCS4String;
-{$ENDIF}
+  Buffer: PAnsiChar;
+  Size: NativeInt;
+  NewSize: Cardinal;
 begin
   if PyUnicode_Check(obj) then
   begin
-    _size := PyUnicode_GetSize(obj);
-    if _size > 0 then
-    begin
-{$IFDEF POSIX}
-      // Note that Linux uses UCS4 strings, whereas it declares using UCS2 strings!!!
-      SetLength(_ucs4Str, _size+1);
-      if PyUnicode_AsWideChar(obj, @_ucs4Str[0], _size) <> _size then
-        raise EPythonError.Create('Could not copy the whole Unicode string into its buffer');
-      Result := UCS4StringToWideString(_ucs4Str);
-      // remove trailing zeros
-      while (Length(Result) > 0) and (Result[Length(Result)] = #0) do
-        Delete(Result, Length(Result), 1);
-{$ELSE}
-      SetLength(Result, _size);
-      if PyUnicode_AsWideChar(obj, @Result[1], _size) <> _size then
-        raise EPythonError.Create('Could not copy the whole Unicode string into its buffer');
-{$ENDIF}
-    end
-    else
-      Result := '';
+    // Size does not include the final #0
+    Buffer := PyUnicode_AsUTF8AndSize(obj, @Size);
+    SetLength(Result, Size);
+    if (Size = 0) or (Buffer = nil) then
+      Exit;
+
+    // The second argument is the size of the destination (Result) including #0
+    NewSize := Utf8ToUnicode(PChar(Result), Cardinal(Size + 1), Buffer, Cardinal(Size));
+    // NewSize includes #0
+    SetLength(Result, NewSize - 1);
   end
   else
     raise EPythonError.CreateFmt(SPyConvertionError, ['PyUnicodeAsString', 'Unicode']);
@@ -6211,7 +6270,7 @@ begin
   Result := PyImport_AddModule(PAnsiChar(ExecModule));
 end;
 
-function TPythonEngine.PyTimeStruct_Check( obj : PPyObject ) : Boolean;
+function TPythonEngine.PyTimeStruct_Check(obj : PPyObject): Boolean;
 begin
   Result := Assigned(FTimeStruct) and (Pointer(obj^.ob_type) = FTimeStruct);
 end;
@@ -6322,14 +6381,6 @@ begin
   inherited;
   if Assigned( FOnCreate ) then
     FOnCreate( Self );
-end;
-
-procedure TEngineClient.Notification( AComponent: TComponent; Operation: TOperation);
-begin
-  inherited;
-  if Operation = opRemove then
-    if AComponent = FEngine then
-      FEngine := nil;
 end;
 
 procedure  TEngineClient.Initialize;
@@ -6563,6 +6614,20 @@ begin
                        PyCFunction(AMethod),
                        ADocString );
   Result^.ml_flags := Result^.ml_flags or METH_KEYWORDS;
+end;
+
+function TMethodsContainer.AddStaticMethodWithKeywords(AMethodName: PAnsiChar;
+  AMethod: PyCFunctionWithKW; ADocString: PAnsiChar): PPyMethodDef;
+begin
+  Result := AddMethodWithKeywords(AMethodName, AMethod, ADocString);
+  Result^.ml_flags := Result^.ml_flags or METH_STATIC;
+end;
+
+function TMethodsContainer.AddClassMethodWithKeywords(AMethodName: PAnsiChar;
+  AMethod: PyCFunctionWithKW; ADocString: PAnsiChar): PPyMethodDef;
+begin
+  Result := AddMethodWithKeywords(AMethodName, AMethod, ADocString);
+  Result^.ml_flags := Result^.ml_flags or METH_CLASS;
 end;
 
 function  TMethodsContainer.AddDelphiMethod( AMethodName  : PAnsiChar;
@@ -7206,9 +7271,10 @@ begin
   end;
 end;
 
-procedure TPythonModule.AddClient( client : TEngineClient );
+procedure TPythonModule.AddClient(Client : TEngineClient);
 begin
-  FClients.Add( client );
+  if FClients.IndexOf(Client) < 0 then
+    FClients.Add(Client);
 end;
 
 function TPythonModule.ErrorByName( const AName : AnsiString ) : TError;
@@ -7237,6 +7303,12 @@ end;
 procedure TPythonModule.RaiseErrorObj( const error, msg : AnsiString; obj : PPyObject );
 begin
   ErrorByName( error ).RaiseErrorObj( msg, obj );
+end;
+
+procedure TPythonModule.RemoveClient(Client: TEngineClient);
+begin
+  // Remove does not raise an exception if not found
+  FClients.Remove(Client);
 end;
 
 procedure TPythonModule.BuildErrors;
@@ -7356,7 +7428,7 @@ end;
 //  TPyObject
 
 // Constructors & Destructors
-constructor TPyObject.Create( APythonType : TPythonType );
+constructor TPyObject.Create(APythonType: TPythonType);
 begin
   inherited Create;
   if Assigned(APythonType) then
@@ -7371,9 +7443,15 @@ begin
   end;
 end;
 
-constructor TPyObject.CreateWith( APythonType : TPythonType; args : PPyObject );
+constructor TPyObject.CreateWith(APythonType: TPythonType; args: PPyObject);
 begin
-  Create( APythonType );
+  Create(APythonType);
+end;
+
+constructor TPyObject.CreateWith(APythonType: TPythonType; args,
+  kwds: PPyObject);
+begin
+  CreateWith(APythonType, args);
 end;
 
 destructor TPyObject.Destroy;
@@ -7902,13 +7980,21 @@ procedure TPythonType.SetModule( val : TPythonModule );
 begin
   if val <> FModule then
     begin
+      if Assigned(FModule) then
+      begin
+        FModule.RemoveFreeNotification(Self);
+        FModule.RemoveClient(Self);
+      end;
       FModule := val;
       if Assigned(val) then
+      begin
+        val.FreeNotification(Self);
         if Initialized and not (csLoading in ComponentState) then
           if val.Initialized then
             AddTypeVar
           else
             val.AddClient(Self);
+      end;
     end;
 end;
 
@@ -7931,9 +8017,9 @@ begin
     end;
 end;
 
-function  TPythonType.CreateMethod( pSelf, args : PPyObject ) : PPyObject;
+function TPythonType.CreateMethod(pSelf, args, kwds: PPyObject): PPyObject;
 begin
-  Result := CreateInstanceWith( args );
+  Result := CreateInstanceWith(args, kwds);
 end;
 
 procedure TPythonType.ReallocGetSets;
@@ -7955,6 +8041,14 @@ begin
   inherited;
   if tpfBaseType in TypeFlags then
     FType.tp_methods := MethodsData;
+end;
+
+procedure TPythonType.SetBaseType(AType: TPythonType);
+begin
+  if AType = nil then
+    FType.tp_base := nil
+  else
+    FType.tp_base := @AType.FType;
 end;
 
 procedure TPythonType.SetDocString( value : TStringList );
@@ -8101,7 +8195,7 @@ begin
     obj.ob_type := aType;
     obj.IsSubtype := aType <> @FType;
     obj.PythonAlloc := True;
-    obj.CreateWith(Self, args);
+    obj.CreateWith(Self, args, kwds);
     if Engine.PyErr_Occurred <> nil then
     begin
       Engine.Py_DECREF(Result);
@@ -8518,6 +8612,7 @@ destructor  TPythonType.Destroy;
 begin
   if gVarType = Self then
     gVarType := nil;
+  Module := nil;
   FDocString.Free;
   FServices.Free;
   inherited;
@@ -8575,14 +8670,14 @@ begin
     end;
 end;
 
-function TPythonType.CreateInstanceWith( args : PPyObject ) : PPyObject;
+function TPythonType.CreateInstanceWith(args, kwds: PPyObject): PPyObject;
 var
   obj : TPyObject;
 begin
   CheckEngine;
   with Engine do
     begin
-      obj := PyObjectClass.CreateWith( Self, args );
+      obj := PyObjectClass.CreateWith(Self, args, kwds);
       obj.ob_type := @FType;
       if PyErr_Occurred <> nil then
       begin
@@ -8597,7 +8692,7 @@ end;
 procedure TPythonType.AddTypeVar;
 var
   d : PPyObject;
-  meth : TDelphiMethod;
+  meth : TDelphiMethodWithKW;
 begin
   CheckEngine;
   Assert(Module <> nil);
@@ -8610,8 +8705,8 @@ begin
     begin
       meth := CreateMethod;
       FCreateFuncDef.ml_name  := PAnsiChar(FCreateFuncName);
-      FCreateFuncDef.ml_meth  := GetOfObjectCallBack( TCallBack(meth), 2, DEFAULT_CALLBACK_TYPE);
-      FCreateFuncDef.ml_flags := METH_VARARGS;
+      FCreateFuncDef.ml_meth  := GetOfObjectCallBack(TCallBack(meth), 3, DEFAULT_CALLBACK_TYPE);
+      FCreateFuncDef.ml_flags := METH_VARARGS or METH_KEYWORDS;
       FCreateFuncDef.ml_doc   := PAnsiChar(FCreateFuncDoc);
       FCreateFunc := Engine.PyCFunction_NewEx(@FCreateFuncDef, nil, nil);
       Engine.Py_INCREF(FCreateFunc);
@@ -8850,7 +8945,7 @@ end;
 // the Create constructor first, and because the constructors
 // are virtual, TPyVar.Create will be automatically be called.
 
-constructor TPyVar.CreateWith( APythonType : TPythonType; args : PPyObject );
+constructor TPyVar.CreateWith(APythonType: TPythonType; args: PPyObject);
 begin
   inherited;
   with GetPythonEngine do

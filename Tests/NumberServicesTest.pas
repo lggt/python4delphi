@@ -272,8 +272,8 @@ end;
 
 { PyTRandomInteger }
 
-constructor PyTRandomInteger.CreateWith(PythonType: TPythonType;
-  args: PPyObject);
+constructor PyTRandomInteger.CreateWith(PythonType: TPythonType; args:
+    PPyObject);
 var
   val1: PPyObject;
 begin

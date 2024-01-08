@@ -1,3 +1,16 @@
+(**************************************************************************)
+(*  This unit is part of the Python for Delphi (P4D) library              *)
+(*  Project home: https://github.com/pyscripter/python4delphi             *)
+(*                                                                        *)
+(*  Project Maintainer:  PyScripter (pyscripter@gmail.com)                *)
+(*  Original Authors:    Dr. Dietmar Budelsky (dbudelsky@web.de)          *)
+(*                       Morgan Martinet (https://github.com/mmm-experts) *)
+(*  Core developer:      Lucas Belo (lucas.belo@live.com)                 *)
+(*  Contributors:        See contributors.md at project home              *)
+(*                                                                        *)
+(*  LICENCE and Copyright: MIT (see project home)                         *)
+(**************************************************************************)
+
 {$I ..\Definition.Inc}
 
 unit WrapFmxForms;
@@ -179,7 +192,9 @@ end;
 procedure TFormsRegistration.RegisterWrappers(
   APyDelphiWrapper: TPyDelphiWrapper);
 begin
-  inherited;
+  APyDelphiWrapper.EventHandlers.RegisterHandler(TCloseQueryEventHandler);
+  APyDelphiWrapper.EventHandlers.RegisterHandler(TCloseEventHandler);
+
   APyDelphiWrapper.RegisterDelphiWrapper(TPyDelphiApplication);
   APyDelphiWrapper.RegisterDelphiWrapper(TPyDelphiCommonCustomForm);
   APyDelphiWrapper.RegisterDelphiWrapper(TPyDelphiCustomForm);
@@ -187,9 +202,6 @@ begin
   APyDelphiWrapper.RegisterDelphiWrapper(TPyDelphiForm);
   APyDelphiWrapper.RegisterDelphiWrapper(TPyDelphiFrame);
   APyDelphiWrapper.RegisterDelphiWrapper(TPyDelphiScreen);
-
-  APyDelphiWrapper.EventHandlers.RegisterHandler(TCloseQueryEventHandler);
-  APyDelphiWrapper.EventHandlers.RegisterHandler(TCloseEventHandler);
 end;
 
 { TPyDelphiApplication }

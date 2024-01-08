@@ -1,3 +1,16 @@
+(**************************************************************************)
+(*  This unit is part of the Python for Delphi (P4D) library              *)
+(*  Project home: https://github.com/pyscripter/python4delphi             *)
+(*                                                                        *)
+(*  Project Maintainer:  PyScripter (pyscripter@gmail.com)                *)
+(*  Original Authors:    Dr. Dietmar Budelsky (dbudelsky@web.de)          *)
+(*                       Morgan Martinet (https://github.com/mmm-experts) *)
+(*  Core developer:      Lucas Belo (lucas.belo@live.com)                 *)
+(*  Contributors:        See contributors.md at project home              *)
+(*                                                                        *)
+(*  LICENCE and Copyright: MIT (see project home)                         *)
+(**************************************************************************)
+
 {$I ..\Definition.Inc}
 
 unit WrapVclGraphics;
@@ -38,6 +51,8 @@ type
     function Set_Transparent( AValue : PPyObject; AContext : Pointer) : integer; cdecl;
     function Set_Width( AValue : PPyObject; AContext : Pointer) : integer; cdecl;
   public
+    constructor CreateWith(APythonType: TPythonType; args, kwds: PPyObject); override;
+
     class function  DelphiObjectClass : TClass; override;
     class procedure RegisterGetSets( PythonType : TPythonType ); override;
     class procedure RegisterMethods( PythonType : TPythonType ); override;
@@ -88,6 +103,8 @@ type
     function Set_TransparentColor( AValue : PPyObject; AContext : Pointer) : Integer; cdecl;
     function Set_TransparentMode( AValue : PPyObject; AContext : Pointer) : Integer; cdecl;
   public
+    constructor CreateWith(APythonType: TPythonType; args, kwds: PPyObject); override;
+
     class function  DelphiObjectClass : TClass; override;
     class procedure RegisterGetSets( PythonType : TPythonType ); override;
     class procedure RegisterMethods( PythonType : TPythonType ); override;
@@ -361,6 +378,13 @@ begin
 end;
 
 { TPyDelphiGraphic }
+
+constructor TPyDelphiGraphic.CreateWith(APythonType: TPythonType;
+  args, kwds: PPyObject);
+begin
+  Create(APythonType);
+  DelphiObject := TGraphicClass(DelphiObjectClass()).Create();
+end;
 
 class function TPyDelphiGraphic.DelphiObjectClass: TClass;
 begin
@@ -694,6 +718,16 @@ begin
 end;
 
 { TPyDelphiBitmap }
+
+constructor TPyDelphiBitmap.CreateWith(APythonType: TPythonType;
+  args, kwds: PPyObject);
+var
+  LWidth, LHeight : Integer;
+begin
+  inherited;
+  if APythonType.Engine.PyArg_ParseTuple(args, 'ii:Create', @LWidth, @LHeight) <> 0 then
+    DelphiObject.SetSize(LWidth, LHeight);
+end;
 
 class function TPyDelphiBitmap.DelphiObjectClass: TClass;
 begin

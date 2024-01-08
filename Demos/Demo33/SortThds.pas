@@ -1,11 +1,10 @@
 unit SortThds;
 
 
-
 interface
 
 uses
-  Classes,
+  Types, Classes,
   Graphics, ExtCtrls, Forms,
   PythonEngine;
 
@@ -125,18 +124,20 @@ begin
   try
     with GetPythonEngine do
     begin
-      if Assigned(FModule) and (ThreadExecMode = emNewInterpreter) then
+      if Assigned(FModule) and (ThreadExecMode <> emNewState) then
         FModule.InitializeForNewInterpreter;
       if Assigned(fScript) then
+      try
         ExecStrings(fScript);
-      pyfunc :=  FindFunction( ExecModule, fpyfuncname);
+      except
+      end;
+      pyfunc :=  FindFunction(ExecModule, utf8encode(fpyfuncname));
       if Assigned(pyfunc) then
         try
           EvalFunction(pyfunc,[NativeInt(self),0,FSize]);
         except
         end;
-
-        Py_DecRef(pyfunc);
+      Py_XDecRef(pyfunc);
     end;
   finally
     running := false;
@@ -159,7 +160,7 @@ end;
 function TSortThread.getvalue(i: integer): integer;
 begin
   if Terminated then
-    raise EPythonError.Create( 'Pythonthread terminated');
+    raise EPythonError.Create('Pythonthread terminated');
   Result := FSortArray^[i];
 end;
 

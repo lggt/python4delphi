@@ -1,3 +1,16 @@
+(**************************************************************************)
+(*  This unit is part of the Python for Delphi (P4D) library              *)
+(*  Project home: https://github.com/pyscripter/python4delphi             *)
+(*                                                                        *)
+(*  Project Maintainer:  PyScripter (pyscripter@gmail.com)                *)
+(*  Original Authors:    Dr. Dietmar Budelsky (dbudelsky@web.de)          *)
+(*                       Morgan Martinet (https://github.com/mmm-experts) *)
+(*  Core developer:      Lucas Belo (lucas.belo@live.com)                 *)
+(*  Contributors:        See contributors.md at project home              *)
+(*                                                                        *)
+(*  LICENCE and Copyright: MIT (see project home)                         *)
+(**************************************************************************)
+
 {$I ..\Definition.Inc}
 
 unit WrapVclControls;
@@ -12,7 +25,8 @@ uses
   Vcl.Controls,
   PythonEngine,
   WrapDelphi,
-  WrapDelphiClasses;
+  WrapDelphiClasses,
+  WrapVclImgList;
 
 type
   {
@@ -124,6 +138,45 @@ type
     property DelphiObject: TCustomControl read GetDelphiObject write SetDelphiObject;
   end;
 
+  TPyDelphiCustomListControl = class (TPyDelphiWinControl)
+  private
+    function GetDelphiObject: TCustomListControl;
+    procedure SetDelphiObject(const Value: TCustomListControl);
+  protected
+  public
+    class function DelphiObjectClass : TClass; override;
+    property DelphiObject: TCustomListControl read GetDelphiObject write SetDelphiObject;
+  end;
+
+  TPyDelphiCustomMultiListControl = class (TPyDelphiCustomListControl)
+  private
+    function GetDelphiObject: TCustomMultiSelectListControl;
+    procedure SetDelphiObject(const Value: TCustomMultiSelectListControl);
+  protected
+  public
+    class function DelphiObjectClass : TClass; override;
+    property DelphiObject: TCustomMultiSelectListControl read GetDelphiObject write SetDelphiObject;
+  end;
+
+  TPyDelphiDragImageList = class (TPyDelphiCustomImageList)
+  private
+    function  GetDelphiObject: TDragImageList;
+    procedure SetDelphiObject(const Value: TDragImageList);
+  public
+    class function  DelphiObjectClass : TClass; override;
+    // Properties
+    property DelphiObject: TDragImageList read GetDelphiObject write SetDelphiObject;
+  end;
+
+  TPyDelphiImageList = class (TPyDelphiDragImageList)
+  private
+    function  GetDelphiObject: TImageList;
+    procedure SetDelphiObject(const Value: TImageList);
+  public
+    class function  DelphiObjectClass : TClass; override;
+    // Properties
+    property DelphiObject: TImageList read GetDelphiObject write SetDelphiObject;
+  end;
 
   { TKeyPressEvent wrapper }
   TKeyPressEventHandler = class(TEventHandler)
@@ -159,6 +212,15 @@ type
   TMouseMoveEventHandler = class(TEventHandler)
   protected
     procedure DoEvent(Sender: TObject; Shift: TShiftState; X: Integer; Y: Integer);
+  public
+    constructor Create(PyDelphiWrapper : TPyDelphiWrapper; Component : TObject;
+      PropertyInfo : PPropInfo; Callable : PPyObject); override;
+    class function GetTypeInfo : PTypeInfo; override;
+  end;
+
+  TContextPopupEventHandler = class(TEventHandler)
+  protected
+    procedure DoEvent(Sender: TObject; MousePos: TPoint; var Handled: Boolean);
   public
     constructor Create(PyDelphiWrapper : TPyDelphiWrapper; Component : TObject;
       PropertyInfo : PPropInfo; Callable : PPyObject); override;
@@ -205,16 +267,19 @@ end;
 
 procedure TControlsRegistration.RegisterWrappers(APyDelphiWrapper: TPyDelphiWrapper);
 begin
-  inherited;
+  APyDelphiWrapper.EventHandlers.RegisterHandler(TKeyPressEventHandler);
+  APyDelphiWrapper.EventHandlers.RegisterHandler(TKeyEventHandler);
+  APyDelphiWrapper.EventHandlers.RegisterHandler(TMouseEventHandler);
+  APyDelphiWrapper.EventHandlers.RegisterHandler(TMouseMoveEventHandler);
+  APyDelphiWrapper.EventHandlers.RegisterHandler(TContextPopupEventHandler);
+
   APyDelphiWrapper.RegisterDelphiWrapper(TPyDelphiControl);
   APyDelphiWrapper.RegisterDelphiWrapper(TPyDelphiWinControl);
   APyDelphiWrapper.RegisterDelphiWrapper(TPyDelphiCustomControl);
-
-  APyDelphiWrapper.EventHandlers.RegisterHandler(TKeyPressEventHandler);
-  APyDelphiWrapper.EventHandlers.RegisterHandler(TKeyEventHandler);
-
-  APyDelphiWrapper.EventHandlers.RegisterHandler(TMouseEventHandler);
-  APyDelphiWrapper.EventHandlers.RegisterHandler(TMouseMoveEventHandler);
+  APyDelphiWrapper.RegisterDelphiWrapper(TPyDelphiCustomListControl);
+  APyDelphiWrapper.RegisterDelphiWrapper(TPyDelphiCustomMultiListControl);
+  APyDelphiWrapper.RegisterDelphiWrapper(TPyDelphiDragImageList);
+  APyDelphiWrapper.RegisterDelphiWrapper(TPyDelphiImageList);
 end;
 
 { TPyDelphiControl }
@@ -865,6 +930,125 @@ end;
 class function TMouseMoveEventHandler.GetTypeInfo: PTypeInfo;
 begin
   Result := System.TypeInfo(TMouseMoveEvent);
+end;
+
+{ TPyDelphiCustomListControl }
+
+class function TPyDelphiCustomListControl.DelphiObjectClass: TClass;
+begin
+  Result := TCustomListControl;
+end;
+
+function TPyDelphiCustomListControl.GetDelphiObject: TCustomListControl;
+begin
+  Result := TCustomListControl(inherited DelphiObject);
+end;
+
+procedure TPyDelphiCustomListControl.SetDelphiObject(
+  const Value: TCustomListControl);
+begin
+  inherited DelphiObject := Value;
+end;
+
+{ TPyDelphiCustomMultiListControl }
+
+class function TPyDelphiCustomMultiListControl.DelphiObjectClass: TClass;
+begin
+  Result := TCustomMultiSelectListControl;
+end;
+
+function TPyDelphiCustomMultiListControl.GetDelphiObject: TCustomMultiSelectListControl;
+begin
+  Result := TCustomMultiSelectListControl(inherited DelphiObject);
+end;
+
+procedure TPyDelphiCustomMultiListControl.SetDelphiObject(
+  const Value: TCustomMultiSelectListControl);
+begin
+  inherited DelphiObject := Value;
+end;
+
+{ TContextPopupEventHandler }
+
+constructor TContextPopupEventHandler.Create(PyDelphiWrapper: TPyDelphiWrapper;
+  Component: TObject; PropertyInfo: PPropInfo; Callable: PPyObject);
+var
+  LMethod : TMethod;
+begin
+  inherited;
+  LMethod.Code := @TContextPopupEventHandler.DoEvent;
+  LMethod.Data := Self;
+  SetMethodProp(Component, PropertyInfo, LMethod);
+end;
+
+class function TContextPopupEventHandler.GetTypeInfo: PTypeInfo;
+begin
+  Result := System.TypeInfo(TContextPopupEvent);
+end;
+
+
+procedure TContextPopupEventHandler.DoEvent(Sender: TObject; MousePos: TPoint;
+  var Handled: Boolean);
+var
+  LPyObject, LPyMousePos, LPyTuple, LPyResult, LPyHandled: PPyObject;
+  LVarParam: TPyDelphiVarParameter;
+begin
+  Assert(Assigned(PyDelphiWrapper));
+  if Assigned(Callable) and PythonOK() then
+    with GetPythonEngine() do begin
+      LPyObject := PyDelphiWrapper.Wrap(Sender);
+      LPyMousePos := WrapPoint(PyDelphiWrapper, MousePos);
+      LPyHandled := CreateVarParam(PyDelphiWrapper, Handled);
+      LVarParam := PythonToDelphi(LPyHandled) as TPyDelphiVarParameter;
+      LPyTuple := PyTuple_New(3);
+      PyTuple_SetItem(LPyTuple, 0, LPyObject);
+      PyTuple_SetItem(LPyTuple, 1, LPyMousePos);
+      PyTuple_SetItem(LPyTuple, 2, LPyHandled);
+      try
+        LPyResult := PyObject_CallObject(Callable, LPyTuple);
+        if Assigned(LPyResult) then begin
+          Py_DECREF(LPyResult);
+          Handled := PyObject_IsTrue(LVarParam.Value) = 1;
+        end;
+      finally
+        Py_DECREF(LPyTuple);
+      end;
+      CheckError();
+    end;
+end;
+
+{ TPyDelphiDragImageList }
+
+class function TPyDelphiDragImageList.DelphiObjectClass: TClass;
+begin
+  Result := TDragImageList;
+end;
+
+function TPyDelphiDragImageList.GetDelphiObject: TDragImageList;
+begin
+  Result := TDragImageList(inherited DelphiObject);
+end;
+
+procedure TPyDelphiDragImageList.SetDelphiObject(const Value: TDragImageList);
+begin
+  inherited DelphiObject := Value;
+end;
+
+{ TPyDelphiImageList }
+
+class function TPyDelphiImageList.DelphiObjectClass: TClass;
+begin
+  Result := TImageList;
+end;
+
+function TPyDelphiImageList.GetDelphiObject: TImageList;
+begin
+  Result := TImageList(inherited DelphiObject);
+end;
+
+procedure TPyDelphiImageList.SetDelphiObject(const Value: TImageList);
+begin
+  inherited DelphiObject := Value;
 end;
 
 initialization

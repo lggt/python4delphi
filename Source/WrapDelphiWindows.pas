@@ -1,3 +1,16 @@
+(**************************************************************************)
+(*  This unit is part of the Python for Delphi (P4D) library              *)
+(*  Project home: https://github.com/pyscripter/python4delphi             *)
+(*                                                                        *)
+(*  Project Maintainer:  PyScripter (pyscripter@gmail.com)                *)
+(*  Original Authors:    Dr. Dietmar Budelsky (dbudelsky@web.de)          *)
+(*                       Morgan Martinet (https://github.com/mmm-experts) *)
+(*  Core developer:      Lucas Belo (lucas.belo@live.com)                 *)
+(*  Contributors:        See contributors.md at project home              *)
+(*                                                                        *)
+(*  LICENCE and Copyright: MIT (see project home)                         *)
+(**************************************************************************)
+
 {$I Definition.Inc}
 
 unit WrapDelphiWindows;
@@ -6,7 +19,9 @@ interface
 
 {$IFDEF MSWINDOWS}
 uses
-  Windows, Classes, SysUtils, PythonEngine, WrapDelphi, WrapDelphiClasses;
+  Windows, Classes, SysUtils, TypInfo, PythonEngine, WrapDelphi, WrapDelphiClasses;
+
+function OwnerDrawStateToPython(const AOwnerDrawState: TOwnerDrawState): PPyObject;
 {$ENDIF MSWINDOWS}
 
 implementation
@@ -17,6 +32,27 @@ implementation
 uses
   System.Win.HighDpi, Winapi.ShellScaling;
 {$ENDIF DELPHI11_OR_HIGHER}
+
+function OwnerDrawStateToPython(const AOwnerDrawState: TOwnerDrawState): PPyObject;
+
+  procedure Append(const AList: PPyObject; const AString: string);
+  var
+    LItem: PPyObject;
+  begin
+    with GetPythonEngine do begin
+      LItem := PyUnicodeFromString(AString);
+      PyList_Append(AList, LItem);
+      Py_XDecRef(LItem);
+    end;
+  end;
+
+var
+  LState: integer;
+begin
+  Result := GetPythonEngine().PyList_New(0);
+  for LState := Ord(odSelected) to Ord(odComboBoxEdit) do
+    Append(Result, System.TypInfo.GetEnumName(TypeInfo(TOwnerDrawState), LState));
+end;
 
 { Register the wrappers, the globals and the constants }
 type

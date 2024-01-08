@@ -1,3 +1,16 @@
+(**************************************************************************)
+(*  This unit is part of the Python for Delphi (P4D) library              *)
+(*  Project home: https://github.com/pyscripter/python4delphi             *)
+(*                                                                        *)
+(*  Project Maintainer:  PyScripter (pyscripter@gmail.com)                *)
+(*  Original Authors:    Dr. Dietmar Budelsky (dbudelsky@web.de)          *)
+(*                       Morgan Martinet (https://github.com/mmm-experts) *)
+(*  Core developer:      Lucas Belo (lucas.belo@live.com)                 *)
+(*  Contributors:        See contributors.md at project home              *)
+(*                                                                        *)
+(*  LICENCE and Copyright: MIT (see project home)                         *)
+(**************************************************************************)
+
 {$I ..\Definition.Inc}
 
 unit WrapVclGrids;
@@ -171,14 +184,13 @@ end;
 
 procedure TGridsRegistration.RegisterWrappers(APyDelphiWrapper: TPyDelphiWrapper);
 begin
-  inherited;
+  APyDelphiWrapper.EventHandlers.RegisterHandler(TDrawCellEventHandler);
+  APyDelphiWrapper.EventHandlers.RegisterHandler(TSelectCellEventHandler);
+
   APyDelphiWrapper.RegisterDelphiWrapper(TPyDelphiCustomGrid);
   APyDelphiWrapper.RegisterDelphiWrapper(TPyDelphiCustomDrawGrid);
   APyDelphiWrapper.RegisterDelphiWrapper(TPyDelphiDrawGrid);
   APyDelphiWrapper.RegisterDelphiWrapper(TPyDelphiStringGrid);
-
-  APyDelphiWrapper.EventHandlers.RegisterHandler(TDrawCellEventHandler);
-  APyDelphiWrapper.EventHandlers.RegisterHandler(TSelectCellEventHandler);
 end;
 
 { Helper functions }
@@ -717,7 +729,7 @@ begin
   with GetPythonEngine do begin
     // adjust the transmitted self argument
     Adjust(@Self);
-    if PyArg_ParseTuple( args, 'iiO:GetCell',@col, @row, @value ) <> 0 then
+    if PyArg_ParseTuple( args, 'iiO:SetCell',@col, @row, @value ) <> 0 then
     begin
       DelphiObject.Cells[col, row]:= PyObjectAsString(value);
       result:=ReturnNone;

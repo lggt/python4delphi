@@ -50,7 +50,7 @@ type
   private
     FRandomInteger: TRandomInteger;
   public
-    constructor CreateWith(PythonType: TPythonType; args: PPyObject); override;
+    constructor CreateWith(PythonType: TPythonType; args, kwds: PPyObject); override;
     // Basic services
     function Repr: PPyObject; override;
     // Number services
@@ -85,7 +85,7 @@ type
   private
     PythonType_TRndInt: TPythonType;
     FPythonModule : TPythonModule;
-    PythonEngine : TPythonEngine;
+    FPythonEngine : TPythonEngine;
     pdvainteger: integer;
     pdvbinteger: integer;
     pdvc : TPythonDelphiVar;
@@ -186,10 +186,10 @@ var
   valpy: TPyObject;
   val: PyTRandomInteger;
 begin
-  PythonEngine := TPythonEngine.Create(nil);
-  PythonEngine.Name := 'PythonEngine';
-  TPythonLoad.Configure(PythonEngine);
-  PythonEngine.LoadDll;
+  FPythonEngine := TPythonEngine.Create(nil);
+  FPythonEngine.Name := 'PythonEngine';
+  TPythonLoad.Configure(FPythonEngine);
+  FPythonEngine.LoadDll;
   // python module
   FPythonModule := TPythonModule.Create(GetPythonEngine);
   FPythonModule.Engine := GetPythonEngine;
@@ -269,15 +269,15 @@ begin
 end;
 
 { PyTRandomInteger }
-constructor PyTRandomInteger.CreateWith(PythonType: TPythonType; args:
-    PPyObject);
+constructor PyTRandomInteger.CreateWith(PythonType: TPythonType; args,
+  kwds: PPyObject);
 var
   val1: PPyObject;
 begin
+  Create(PythonType);
   with GetPythonEngine do
   begin
     try
-      inherited;
       // create object
       FRandomInteger := TRandomInteger.Create;
       // try to parse the parameter
@@ -486,7 +486,7 @@ begin
 end;
 procedure TTestNumberServices.TearDownFixture;
 begin
-  PythonEngine.Free;
+  FPythonEngine.Free;
   pdvc.Free;
 end;
 // nsAdd

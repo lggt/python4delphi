@@ -1,4 +1,18 @@
+(**************************************************************************)
+(*  This unit is part of the Python for Delphi (P4D) library              *)
+(*  Project home: https://github.com/pyscripter/python4delphi             *)
+(*                                                                        *)
+(*  Project Maintainer:  PyScripter (pyscripter@gmail.com)                *)
+(*  Original Authors:    Dr. Dietmar Budelsky (dbudelsky@web.de)          *)
+(*                       Morgan Martinet (https://github.com/mmm-experts) *)
+(*  Core developer:      Lucas Belo (lucas.belo@live.com)                 *)
+(*  Contributors:        See contributors.md at project home              *)
+(*                                                                        *)
+(*  LICENCE and Copyright: MIT (see project home)                         *)
+(**************************************************************************)
+
 {$I ..\Definition.Inc}
+
 unit WrapVclThemes;
 
 interface
@@ -24,7 +38,7 @@ uses
     function Set_AuthorUrl(AValue: PPyObject; AContext: Pointer) : Integer; cdecl;
     function Set_Version(AValue: PPyObject; AContext: Pointer) : Integer; cdecl;
   public
-    constructor CreateWith(APythonType: TPythonType; args: PPyObject); override;
+    constructor CreateWith(APythonType: TPythonType; args, kwds: PPyObject); override;
     function Compare(AObj: PPyObject) : Integer; override;
     function Repr: PPyObject; override;
     class procedure RegisterGetSets(APythonType: TPythonType ); override;
@@ -38,7 +52,7 @@ uses
     procedure SetDelphiObject(const Value: TCustomStyleServices);
   public
     constructor Create( APythonType : TPythonType ); override;
-    constructor CreateWith(APythonType: TPythonType; args: PPyObject); override;
+    constructor CreateWith(APythonType: TPythonType; args, kwds: PPyObject); override;
     class function DelphiObjectClass : TClass; override;
     class procedure RegisterMethods( PythonType : TPythonType ); override;
     // Properties
@@ -56,7 +70,7 @@ uses
     function LoadFromFileName_Wrapper(AArgs: PPyObject): PPyObject; cdecl;
     function IsValidStyle_Wrapper(AArgs: PPyObject): PPyObject; cdecl;
   public
-    constructor CreateWith(APythonType: TPythonType; args: PPyObject); override;
+    constructor CreateWith(APythonType: TPythonType; args, kwds: PPyObject); override;
     class function DelphiObjectClass : TClass; override;
     class procedure RegisterGetSets(PythonType: TPythonType); override;
     class procedure RegisterMethods(PythonType: TPythonType); override;
@@ -158,10 +172,10 @@ begin
 end;
 
 { TPyDelphiStyleManager }
-constructor TPyDelphiStyleManager.CreateWith(APythonType: TPythonType; args:
-    PPyObject);
+constructor TPyDelphiStyleManager.CreateWith(APythonType: TPythonType;
+  args, kwds: PPyObject);
 begin
-  inherited;
+  Create(APythonType);
   DelphiObject := TStyleManager.Create();
 end;
 
@@ -279,8 +293,8 @@ begin
 end;
 
 { TPyDelphiStyleInfo }
-constructor TPyDelphiStyleInfo.CreateWith(APythonType: TPythonType; args:
-    PPyObject);
+constructor TPyDelphiStyleInfo.CreateWith(APythonType: TPythonType; args,
+  kwds: PPyObject);
 var
   LName: PAnsiChar;
   LAuthor: PAnsiChar;
@@ -288,7 +302,7 @@ var
   LAuthorURL: PAnsiChar;
   LVersion: PAnsiChar;
 begin
-  inherited;
+  Create(APythonType);
   if APythonType.Engine.PyArg_ParseTuple(args, 'sssss:Create', @LName, @LAuthor, @LAuthorEMail, @LAuthorURL, @LVersion) <> 0 then
   begin
     FValue.Name := string(LName);
@@ -465,9 +479,9 @@ begin
 end;
 
 constructor TPyDelphiCustomStyleServices.CreateWith(APythonType: TPythonType;
-    args: PPyObject);
+    args, kwds: PPyObject);
 begin
-  inherited;
+  Create(APythonType);
   DelphiObject := StyleServices();
 end;
 

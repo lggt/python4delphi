@@ -1,17 +1,14 @@
-{$I Definition.Inc}
-
-unit VarPyth;
-
 (**************************************************************************)
+(*  This unit is part of the Python for Delphi (P4D) library              *)
+(*  Project home: https://github.com/pyscripter/python4delphi             *)
 (*                                                                        *)
-(* Module:  Unit 'VarPyth'          Copyright (c) 2001                    *)
+(*  Project Maintainer:  PyScripter (pyscripter@gmail.com)                *)
+(*  Original Authors:    Dr. Dietmar Budelsky (dbudelsky@web.de)          *)
+(*                       Morgan Martinet (https://github.com/mmm-experts) *)
+(*  Core developer:      Lucas Belo (lucas.belo@live.com)                 *)
+(*  Contributors:        See contributors.md at project home              *)
 (*                                                                        *)
-(* Version: 1.0                     Morgan Martinet                       *)
-(* Sub-Version: 0.7                 4723 rue Brebeuf                      *)
-(*                                  H2J 3L2 MONTREAL (QC)                 *)
-(*                                  CANADA                                *)
-(*                                  e-mail: p4d@mmm-experts.com           *)
-(*                                                                        *)
+(*  LICENCE and Copyright: MIT (see project home)                         *)
 (**************************************************************************)
 (*  Functionality:  This allows you to use Python objects like COM        *)
 (*                  automation objects, inside your Delphi source code.   *)
@@ -19,23 +16,10 @@ unit VarPyth;
 (*                  that uses the new custom variant types introduced     *)
 (*                  in Delphi6.                                           *)
 (**************************************************************************)
-(*  Contributors:                                                         *)
-(**************************************************************************)
-(* This source code is distributed with no WARRANTY, for no reason or use.*)
-(* Everyone is allowed to use and change this code free for his own tasks *)
-(* and projects, as long as this header and its copyright text is intact. *)
-(* For changed versions of this code, which are public distributed the    *)
-(* following additional conditions have to be fullfilled:                 *)
-(* 1) The header has to contain a comment on the change and the author of *)
-(*    it.                                                                 *)
-(* 2) A copy of the changed source has to be sent to the above E-Mail     *)
-(*    address or my then valid address, if this is possible to the        *)
-(*    author.                                                             *)
-(* The second condition has the target to maintain an up to date central  *)
-(* version of the component. If this condition is not acceptable for      *)
-(* confidential or legal reasons, everyone is free to derive a component  *)
-(* or to generate a diff file to my or other original sources.            *)
-(**************************************************************************)
+
+{$I Definition.Inc}
+
+unit VarPyth;
 
 interface
 
@@ -146,11 +130,11 @@ uses
 type
   TNamedParamDesc = record
     Index : Integer;
-    Name : AnsiString;
+    Name : PAnsiChar;
   end;
   TNamedParamArray = array of TNamedParamDesc;
 
-{$IF not defined(FPC) and (defined(OSX64) or defined(LINUX) or not defined(DELPHI10_4_OR_HIGHER))}
+{$IF not defined(FPC) and (defined(OSX64) or defined(LINUX) or defined(ANDROID) or not defined(DELPHI10_4_OR_HIGHER))}
   {$DEFINE PATCHEDSYSTEMDISPINVOKE}  //To correct memory leaks
 {$IFEND}
 
@@ -956,7 +940,7 @@ const
   CPropertyGet = $02;
   CPropertySet = $04;
 
-{$IF defined(PATCHEDSYSTEMDISPINVOKE) and (defined(OSX64) or defined(LINUX))}
+{$IF defined(PATCHEDSYSTEMDISPINVOKE) and (defined(OSX64) or defined(LINUX) or defined(ANDROID))}
 {
    Fixes https://quality.embarcadero.com/browse/RSP-28097
 }
@@ -1052,14 +1036,11 @@ begin
         varVariant:
           begin
             PVarParm^.VType := varEmpty;
-{$IFDEF CPUX64}
-
-//          PVariant(PVarParm)^ := PVariant(Params^)^;
+            {$IFDEF CPU64BITS}
             PVariant(PVarParm)^ := VarArgGetValue(VAList, PVariant)^;
-{$ELSE}
-//          PVariant(PVarParm)^ := PVariant(Params)^;
+            {$ELSE}
             PVariant(PVarParm)^ := VarArgGetValue(VAList, Variant);
-{$ENDIF}
+            {$ENDIF}
           end;
         varUnknown:   PVarParm^.VUnknown := VarArgGetValue(VAList, Pointer);
         varSmallint:  PVarParm^.VSmallInt := VarArgGetValue(VAList, SmallInt);
@@ -1287,39 +1268,41 @@ procedure TPythonVariantType.DispInvoke(Dest: PVarData;
     LNamedArgStart : Integer;     //arg position of 1st named argument (if any)
     I : integer;
   begin
+    SetLength(fNamedParams, CallDesc^.NamedArgCount);
+    if CallDesc^.NamedArgCount = 0 then
+      Exit;
     LNamePtr := PAnsiChar(@CallDesc^.ArgTypes[CallDesc^.ArgCount]);
     LNamedArgStart := CallDesc^.ArgCount - CallDesc^.NamedArgCount;
-    SetLength(fNamedParams, CallDesc^.NamedArgCount);
     // Skip function Name
     for I := 0 to CallDesc^.NamedArgCount - 1 do begin
       LNamePtr := LNamePtr + Succ(Length(LNamePtr));
       fNamedParams[I].Index := I+LNamedArgStart;
-      fNamedParams[I].Name  := AnsiString(LNamePtr);
+      fNamedParams[I].Name  := LNamePtr;
     end;
   end;
 
 Var
   NewCallDesc : TCallDesc;
 begin
-  if CallDesc^.NamedArgCount > 0 then GetNamedParams;
-  try
-    if (CallDesc^.CallType = CPropertyGet) and (CallDesc^.ArgCount = 1) then begin
+    if CallDesc^.CallType = CDoMethod then
+      GetNamedParams;  // fNamedParams will be cleared in EvalPython
+    if (CallDesc^.CallType = CPropertyGet) and (CallDesc^.ArgCount = 1) then
+    begin
       NewCallDesc := CallDesc^;
       NewCallDesc.CallType := CDoMethod;
-    {$IFDEF PATCHEDSYSTEMDISPINVOKE}
+      SetLength(fNamedParams, 0);
+      {$IFDEF PATCHEDSYSTEMDISPINVOKE}
       PatchedDispInvoke(Dest, Source, @NewCallDesc, Params);
-    {$ELSE PATCHEDSYSTEMDISPINVOKE}
+      {$ELSE PATCHEDSYSTEMDISPINVOKE}
       inherited DispInvoke(Dest, Source, @NewCallDesc, Params);
-    {$ENDIF PATCHEDSYSTEMDISPINVOKE}
-    end else
+      {$ENDIF PATCHEDSYSTEMDISPINVOKE}
+    end
+    else
       {$IFDEF PATCHEDSYSTEMDISPINVOKE}
       PatchedDispInvoke(Dest, Source, CallDesc, Params);
       {$ELSE PATCHEDSYSTEMDISPINVOKE}
       inherited;
       {$ENDIF PATCHEDSYSTEMDISPINVOKE}
-  finally
-    if CallDesc^.NamedArgCount > 0 then SetLength(fNamedParams, 0);
-  end;
 end;
 
 function TPythonVariantType.DoFunction(var Dest: TVarData;
@@ -1535,8 +1518,14 @@ var
   _Args : PPyObject;
   _ArgLen : Integer;
   _KW : PPyObject;
+  LNamedParams : TNamedParamArray;
 begin
   Result := nil;
+
+  // Store global fNamedParams and clear it  ASAP
+  LNamedParams := System.Copy(fNamedParams);
+  SetLength(fNamedParams, 0);
+
   with GetPythonEngine do
   begin
     // extract the associated Python object
@@ -1599,10 +1588,10 @@ begin
             _ArgLen := 0
           else
             _ArgLen := Length(Arguments);
-          if Length(fNamedParams) > 0 then
+          if Length(LNamedParams) > 0 then
           begin
             _KW := PyDict_New;
-            _ArgLen := fNamedParams[0].Index;
+            _ArgLen := LNamedParams[0].Index;
           end
           else
             _KW := nil;
@@ -1611,14 +1600,11 @@ begin
             try
               for i := 0 to _ArgLen-1 do
                 PyTuple_SetItem( _Args, i, ArgAsPythonObject(i) );
-              for i := 0 to Length(fNamedParams)-1 do
-                PyDict_SetItemString(_KW, PAnsiChar(fNamedParams[i].Name), ArgAsPythonObject(fNamedParams[i].Index));
+              for i := 0 to Length(LNamedParams)-1 do
+                PyDict_SetItemString(_KW, LNamedParams[i].Name, ArgAsPythonObject(LNamedParams[i].Index));
 
               // call the func or method, with or without named parameters (KW)
-              if Assigned(_KW) then
-                Result := PyEval_CallObjectWithKeywords(_obj, _Args, _KW)
-              else
-                Result := PyEval_CallObjectWithKeywords(_obj, _Args, nil);
+              Result := PyEval_CallObjectWithKeywords(_obj, _Args, _KW);
               CheckError(True);
             finally
               Py_XDecRef(_Args);

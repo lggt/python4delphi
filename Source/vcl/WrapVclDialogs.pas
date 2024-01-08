@@ -1,3 +1,16 @@
+(**************************************************************************)
+(*  This unit is part of the Python for Delphi (P4D) library              *)
+(*  Project home: https://github.com/pyscripter/python4delphi             *)
+(*                                                                        *)
+(*  Project Maintainer:  PyScripter (pyscripter@gmail.com)                *)
+(*  Original Authors:    Dr. Dietmar Budelsky (dbudelsky@web.de)          *)
+(*                       Morgan Martinet (https://github.com/mmm-experts) *)
+(*  Core developer:      Lucas Belo (lucas.belo@live.com)                 *)
+(*  Contributors:        See contributors.md at project home              *)
+(*                                                                        *)
+(*  LICENCE and Copyright: MIT (see project home)                         *)
+(**************************************************************************)
+
 {$I ..\Definition.Inc}
 
 unit WrapVclDialogs;
@@ -64,13 +77,13 @@ uses
 { Global Functions }
 function ShowMessage_Wrapper(pself, args: PPyObject): PPyObject; cdecl;
 var
-  LMsg: PAnsiChar;
+  LPyMsg: PPyObject;
 begin
   with GetPythonEngine do
   begin
-    if PyArg_ParseTuple(args, 's:ShowMessage', @LMsg) <> 0 then
+    if PyArg_ParseTuple(args, 'O:ShowMessage', @LPyMsg) <> 0 then
     begin
-      ShowMessage(string(LMsg));
+      ShowMessage(PyObjectAsString(LPyMsg));
       Result := GetPythonEngine.ReturnNone;
     end else
       Result := nil;

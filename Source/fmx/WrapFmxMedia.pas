@@ -1,4 +1,18 @@
+(**************************************************************************)
+(*  This unit is part of the Python for Delphi (P4D) library              *)
+(*  Project home: https://github.com/pyscripter/python4delphi             *)
+(*                                                                        *)
+(*  Project Maintainer:  PyScripter (pyscripter@gmail.com)                *)
+(*  Original Authors:    Dr. Dietmar Budelsky (dbudelsky@web.de)          *)
+(*                       Morgan Martinet (https://github.com/mmm-experts) *)
+(*  Core developer:      Lucas Belo (lucas.belo@live.com)                 *)
+(*  Contributors:        See contributors.md at project home              *)
+(*                                                                        *)
+(*  LICENCE and Copyright: MIT (see project home)                         *)
+(**************************************************************************)
+
 {$I ..\Definition.Inc}
+
 unit WrapFmxMedia;
 
 interface
@@ -178,7 +192,8 @@ end;
 procedure TFMXMediaRegistration.RegisterWrappers(APyDelphiWrapper
   : TPyDelphiWrapper);
 begin
-  inherited;
+  APyDelphiWrapper.EventHandlers.RegisterHandler(TSampleBufferReadyEventHandler);
+
   APyDelphiWrapper.RegisterDelphiWrapper(TPyDelphiCameraComponent);
   APyDelphiWrapper.RegisterDelphiWrapper(TPyDelphiCustomMediaCodec);
   APyDelphiWrapper.RegisterDelphiWrapper(TPyDelphiMediaPlayerControl);
@@ -191,8 +206,6 @@ begin
   APyDelphiWrapper.RegisterDelphiWrapper(TPyDelphiMediaPlayerValue);
   APyDelphiWrapper.RegisterDelphiWrapper(TPyDelphiMediaPlayerCurrentTime);
   APyDelphiWrapper.RegisterDelphiWrapper(TPyDelphiMediaPlayerVolume);
-
-  APyDelphiWrapper.EventHandlers.RegisterHandler(TSampleBufferReadyEventHandler);
 end;
 
 { TSampleBufferReadyEventHandler }

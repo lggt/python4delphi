@@ -135,17 +135,12 @@ end;
 
 procedure TThreadSortForm.Start1BtnClick(Sender: TObject);
 begin
-  with GetPythonEngine do
-  begin
-    ExecStrings(PythonMemo.Lines);
-    self.InitThreads(emNewState, nil);
-  end;
+  InitThreads(emNewState, PythonMemo.Lines);
 end;
 
 procedure TThreadSortForm.Start3BtnClick(Sender: TObject);
 begin
-  InitThreads(emNewInterpreter, PythonMemo.Lines);
-//PythonEngine1.ExecStrings(PythonMemo.Lines);
+  InitThreads(emNewInterpreterOwnGIL, PythonMemo.Lines);
 end;
 
 procedure TThreadSortForm.LoadBtnClick(Sender: TObject);
